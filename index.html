@@ -1,0 +1,1865 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BeSoccer Product Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Asap:wght@400;500;600&family=Asap+Condensed:wght@500;600;700&display=swap">
+<style>
+/* ============================================================
+   BeSoccer Product Lab — tokens
+   Extraídos del design system de producción de besoccer.com:
+   verde #3B811F (color dominante), tinta #383838, plano #ECECEC,
+   hairline #E1E1E1, tipografía Asap Condensed.
+   Series de datos: derivadas de esa base y validadas para
+   daltonismo (protan/deutan, ΔE OKLab adyacente ≥ 8).
+   ============================================================ */
+:root {
+  color-scheme: light;
+  --plane:      #eceee8;
+  --card:       #ffffff;
+  --sunken:     #f6f7f3;
+  --ink:        #21261e;
+  --ink-2:      #5c6357;
+  --ink-3:      #8b9285;
+  --hair:       #e1e4da;
+  --hair-2:     #cfd4c6;
+  --brand:      #3b811f;
+  --brand-hi:   #4a9a29;
+  --brand-wash: #eef6e9;
+  --on-brand:   #ffffff;
+  --bar:        #21261e;
+  --bar-ink:    #f4f6ef;
+
+  --grid:       #e6e9df;
+  --axis:       #cfd4c6;
+  --deemph:     #bcc2b3;
+
+  /* categóricas — orden fijo, nunca ciclado */
+  --s1: #3b811f; --s2: #0479b2; --s3: #bd2f42;
+  --s4: #7756d0; --s5: #d8a10c; --s6: #18a0a1;
+
+  /* secuencial — un solo tono, claro→oscuro */
+  --q1: #eaf4e3; --q2: #cbe6bd; --q3: #9bd38a;
+  --q4: #70a65f; --q5: #4a7d38; --q6: #285b14;
+
+  /* ordinal — pasos discretos ordenados (embudos) */
+  --o1: #85bc74; --o2: #70a65f; --o3: #5b904b; --o4: #4a7d38; --o5: #285b14;
+
+  /* divergente — polos frío/cálido + gris neutro al centro */
+  --div-pos: #0479b2; --div-neg: #bd2f42; --div-mid: #e6e9df;
+
+  /* estado — sólo en texto y pastillas, siempre con icono + etiqueta */
+  --good: #2c6b17; --warn: #8a5e00; --crit: #a52334;
+  --good-wash: #eaf4e3; --warn-wash: #fbf3dd; --crit-wash: #fbe9eb;
+
+  --shadow: 0 1px 2px rgba(33,38,30,.06), 0 1px 0 rgba(33,38,30,.03);
+  --r: 3px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) {
+    color-scheme: dark;
+    --plane:#0e100c; --card:#1b1e1a; --sunken:#22261f;
+    --ink:#f0f3ea; --ink-2:#b3bba9; --ink-3:#868e7e;
+    --hair:#2b2f27; --hair-2:#3a3f35;
+    --brand:#57a52e; --brand-hi:#6bbc3f; --brand-wash:rgba(87,165,46,.14); --on-brand:#0e1a06;
+    --bar:#101208; --bar-ink:#f0f3ea;
+    --grid:#272b23; --axis:#3a3f35; --deemph:#4a5044;
+    --s1:#57a52e; --s2:#2f95cf; --s3:#d9515f; --s4:#9179e0; --s5:#b98d16; --s6:#23a9aa;
+    --q1:#1e3c12; --q2:#2d5a1c; --q3:#3e7a29; --q4:#508c3c; --q5:#619e4e; --q6:#86c572;
+    --o1:#8ccb78; --o2:#77b563; --o3:#619e4e; --o4:#4d8938; --o5:#387422;
+    --div-pos:#2f95cf; --div-neg:#d9515f; --div-mid:#2f342b;
+    --good:#6bbc3f; --warn:#d8a10c; --crit:#e8707c;
+    --good-wash:rgba(107,188,63,.14); --warn-wash:rgba(216,161,12,.14); --crit-wash:rgba(232,112,124,.14);
+    --shadow: 0 1px 2px rgba(0,0,0,.4);
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --plane:#0e100c; --card:#1b1e1a; --sunken:#22261f;
+  --ink:#f0f3ea; --ink-2:#b3bba9; --ink-3:#868e7e;
+  --hair:#2b2f27; --hair-2:#3a3f35;
+  --brand:#57a52e; --brand-hi:#6bbc3f; --brand-wash:rgba(87,165,46,.14); --on-brand:#0e1a06;
+  --bar:#101208; --bar-ink:#f0f3ea;
+  --grid:#272b23; --axis:#3a3f35; --deemph:#4a5044;
+  --s1:#57a52e; --s2:#2f95cf; --s3:#d9515f; --s4:#9179e0; --s5:#b98d16; --s6:#23a9aa;
+  --q1:#1e3c12; --q2:#2d5a1c; --q3:#3e7a29; --q4:#508c3c; --q5:#619e4e; --q6:#86c572;
+  --o1:#8ccb78; --o2:#77b563; --o3:#619e4e; --o4:#4d8938; --o5:#387422;
+  --div-pos:#2f95cf; --div-neg:#d9515f; --div-mid:#2f342b;
+  --good:#6bbc3f; --warn:#d8a10c; --crit:#e8707c;
+  --good-wash:rgba(107,188,63,.14); --warn-wash:rgba(216,161,12,.14); --crit-wash:rgba(232,112,124,.14);
+  --shadow: 0 1px 2px rgba(0,0,0,.4);
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--plane); color: var(--ink);
+  font: 400 14px/1.45 Asap, system-ui, -apple-system, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+h1,h2,h3,h4 { font-family: "Asap Condensed", Asap, system-ui, sans-serif; margin: 0; text-wrap: balance; }
+button, select, input { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--brand-hi); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+
+/* ---------- marcador superior (scoreboard) ---------- */
+.bar {
+  background: var(--bar); color: var(--bar-ink);
+  padding: 10px 20px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+}
+.brand { display: flex; align-items: baseline; gap: 8px; font-family: "Asap Condensed", sans-serif; }
+.brand .bs { font-weight: 700; font-size: 20px; letter-spacing: -.2px; }
+.brand .bs em { font-style: normal; color: var(--brand-hi); }
+.brand .sep { width: 1px; height: 18px; background: rgba(255,255,255,.22); align-self: center; }
+.brand .app { font-weight: 500; font-size: 15px; opacity: .82; letter-spacing: .3px; text-transform: uppercase; }
+.bar .spacer { flex: 1; }
+.bar .meta { font-size: 12px; opacity: .6; font-variant-numeric: tabular-nums; }
+.ghost {
+  background: transparent; border: 1px solid rgba(255,255,255,.2); color: inherit;
+  border-radius: var(--r); padding: 4px 9px; font-size: 12.5px; cursor: pointer;
+}
+.ghost:hover { background: rgba(255,255,255,.09); }
+
+/* ---------- pestañas ---------- */
+.tabs {
+  background: var(--card); border-bottom: 1px solid var(--hair);
+  display: flex; gap: 2px; padding: 0 12px; overflow-x: auto; scrollbar-width: thin;
+  position: sticky; top: 0; z-index: 30;
+}
+.tab {
+  background: none; border: 0; border-bottom: 3px solid transparent; cursor: pointer;
+  font-family: "Asap Condensed", sans-serif; font-weight: 600; font-size: 15px;
+  letter-spacing: .2px; text-transform: uppercase; color: var(--ink-2);
+  padding: 12px 13px 9px; white-space: nowrap;
+}
+.tab:hover { color: var(--ink); background: var(--sunken); }
+.tab[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--brand); }
+.tab .n { font-size: 11px; color: var(--ink-3); margin-left: 5px; font-variant-numeric: tabular-nums; }
+
+/* ---------- fila de filtros ---------- */
+.filters {
+  background: var(--card); border-bottom: 1px solid var(--hair);
+  padding: 10px 20px; display: flex; align-items: center; gap: 8px 14px; flex-wrap: wrap;
+  position: sticky; top: 44px; z-index: 20;
+}
+.fgroup { display: flex; align-items: center; gap: 7px; }
+.flabel {
+  font-family: "Asap Condensed", sans-serif; font-size: 11.5px; font-weight: 600;
+  letter-spacing: .7px; text-transform: uppercase; color: var(--ink-3);
+}
+.seg { display: flex; border: 1px solid var(--hair-2); border-radius: var(--r); overflow: hidden; }
+.seg button {
+  background: var(--card); border: 0; border-left: 1px solid var(--hair);
+  padding: 5px 10px; cursor: pointer; font-size: 13px; color: var(--ink-2); white-space: nowrap;
+}
+.seg button:first-child { border-left: 0; }
+.seg button:hover { background: var(--sunken); }
+.seg button[aria-pressed="true"] { background: var(--brand); color: var(--on-brand); font-weight: 600; }
+select {
+  background: var(--card); border: 1px solid var(--hair-2); border-radius: var(--r);
+  padding: 5px 8px; cursor: pointer;
+}
+.switch { display: inline-flex; align-items: center; gap: 7px; cursor: pointer; font-size: 13px; color: var(--ink-2); }
+.switch input { appearance: none; width: 32px; height: 18px; border-radius: 9px; background: var(--hair-2); position: relative; cursor: pointer; transition: background .14s; margin: 0; }
+.switch input::after { content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: var(--card); transition: transform .14s; }
+.switch input:checked { background: var(--brand); }
+.switch input:checked::after { transform: translateX(14px); }
+.reset { background: none; border: 0; color: var(--ink-3); cursor: pointer; font-size: 12.5px; text-decoration: underline; text-underline-offset: 2px; }
+.reset:hover { color: var(--ink); }
+
+/* ---------- rejilla ---------- */
+main { padding: 18px 20px 56px; max-width: 1560px; margin: 0 auto; }
+.grid { display: grid; grid-template-columns: repeat(12, minmax(0,1fr)); gap: 14px; }
+.c3 { grid-column: span 3; } .c4 { grid-column: span 4; } .c5 { grid-column: span 5; }
+.c6 { grid-column: span 6; } .c7 { grid-column: span 7; } .c8 { grid-column: span 8; }
+.c9 { grid-column: span 9; } .c12 { grid-column: span 12; }
+@media (max-width: 1180px) { .c3,.c4,.c5 { grid-column: span 6; } .c7,.c8,.c9 { grid-column: span 12; } }
+@media (max-width: 720px)  { .grid > * { grid-column: span 12 !important; } main { padding: 14px 12px 40px; } .filters { top: 41px; padding: 9px 12px; } }
+
+.card { background: var(--card); border: 1px solid var(--hair); border-radius: var(--r); box-shadow: var(--shadow); padding: 14px 16px 16px; min-width: 0; }
+.card.plot { display: flex; flex-direction: column; gap: 10px; }
+.chead { display: flex; align-items: flex-start; gap: 10px; }
+.chead h3 { font-size: 15.5px; font-weight: 600; letter-spacing: .1px; line-height: 1.2; }
+.chead p { margin: 3px 0 0; font-size: 12.5px; color: var(--ink-3); }
+.chead .spacer { flex: 1; }
+.mini { background: var(--card); border: 1px solid var(--hair-2); border-radius: var(--r); color: var(--ink-2); font-size: 11.5px; padding: 3px 7px; cursor: pointer; white-space: nowrap; }
+.mini:hover { background: var(--sunken); color: var(--ink); }
+.mini[aria-pressed="true"] { background: var(--sunken); color: var(--ink); border-color: var(--hair-2); font-weight: 600; }
+
+/* eyebrow: sólo donde marca sección real */
+.eyebrow { font-family: "Asap Condensed", sans-serif; font-size: 11.5px; font-weight: 600; letter-spacing: .9px; text-transform: uppercase; color: var(--ink-3); display: flex; align-items: center; gap: 8px; margin: 6px 0 -2px; }
+.eyebrow::before { content: ""; width: 3px; height: 13px; background: var(--brand); }
+.eyebrow .rule { flex: 1; height: 1px; background: var(--hair); }
+
+/* ---------- héroe + KPI ---------- */
+.hero { display: grid; grid-template-columns: minmax(0,1.05fr) minmax(0,1fr); gap: 20px; align-items: end; }
+@media (max-width: 520px) { .hero { grid-template-columns: 1fr; } }
+.hero .fig { font-family: "Asap Condensed", sans-serif; font-size: 54px; font-weight: 700; line-height: .95; letter-spacing: -1px; white-space: nowrap; }
+.hero .lbl { font-size: 13px; color: var(--ink-2); }
+.hero .side { font-size: 12.5px; color: var(--ink-3); }
+.kpi { display: flex; flex-direction: column; gap: 6px; }
+.kpi .lbl { font-size: 12.5px; color: var(--ink-2); }
+.kpi .val { font-family: "Asap Condensed", sans-serif; font-size: 27px; font-weight: 700; line-height: 1.05; letter-spacing: -.3px; white-space: nowrap; }
+.kpi .row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.delta { font-size: 12.5px; font-weight: 600; display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 4px; font-variant-numeric: tabular-nums; }
+.delta.up { color: var(--good); } .delta.down { color: var(--crit); } .delta.flat { color: var(--ink-3); }
+.delta .vs { font-weight: 400; color: var(--ink-3); }
+
+/* ---------- pastillas ---------- */
+.pill { display: inline-flex; align-items: center; gap: 4px; border-radius: 999px; padding: 1px 8px; font-size: 11.5px; font-weight: 600; white-space: nowrap; }
+.pill.good { background: var(--good-wash); color: var(--good); }
+.pill.warn { background: var(--warn-wash); color: var(--warn); }
+.pill.crit { background: var(--crit-wash); color: var(--crit); }
+.pill.mute { background: var(--sunken); color: var(--ink-2); }
+
+/* ---------- leyenda ---------- */
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12.5px; color: var(--ink-2); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { display: inline-block; border-radius: 1px; }
+.legend i.rect { width: 10px; height: 10px; }
+.legend i.line { width: 14px; height: 2px; border-radius: 2px; }
+
+/* ---------- tablas ---------- */
+.tblwrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: right; padding: 6px 9px; border-bottom: 1px solid var(--hair); white-space: nowrap; }
+th:first-child, td:first-child { text-align: left; }
+thead th {
+  font-family: "Asap Condensed", sans-serif; font-size: 11.5px; font-weight: 600;
+  letter-spacing: .6px; text-transform: uppercase; color: var(--ink-3);
+  border-bottom: 1px solid var(--hair-2); position: sticky; top: 0; background: var(--card);
+}
+tbody td { font-variant-numeric: tabular-nums; }
+tbody tr:hover { background: var(--sunken); }
+tfoot td { font-weight: 600; border-bottom: 0; border-top: 1px solid var(--hair-2); font-variant-numeric: tabular-nums; }
+td .name { display: inline-flex; align-items: center; gap: 7px; }
+td .dot { width: 9px; height: 9px; border-radius: 2px; flex: none; }
+.meter { display: block; height: 6px; background: var(--sunken); border-radius: 2px; overflow: hidden; min-width: 64px; }
+.meter i { display: block; height: 100%; background: var(--q4); }
+
+/* ---------- lectura de producto ---------- */
+.read { background: var(--card); border: 1px solid var(--hair); border-left: 3px solid var(--brand); border-radius: var(--r); padding: 13px 16px; }
+.read h4 { font-size: 14px; margin-bottom: 8px; }
+.read ol { margin: 0; padding-left: 20px; display: grid; gap: 7px; font-size: 13.2px; color: var(--ink-2); }
+.read ol strong { color: var(--ink); font-weight: 600; }
+.read .why { color: var(--ink-3); }
+
+/* ---------- gráficas ---------- */
+.plotbox { position: relative; }
+.plotbox svg { display: block; width: 100%; height: auto; }
+svg text { font-family: Asap, system-ui, sans-serif; }
+.tick { font-size: 11px; fill: var(--ink-3); font-variant-numeric: tabular-nums; }
+.dlabel { font-size: 12px; font-weight: 600; fill: var(--ink); font-variant-numeric: tabular-nums; }
+.dlabel.sec { font-weight: 400; fill: var(--ink-3); }
+.hit { fill: transparent; cursor: crosshair; }
+.hit:focus { outline: none; }
+.cellhit { cursor: default; }
+.stale { opacity: .38; transition: opacity .12s; }
+
+#tip {
+  position: fixed; z-index: 90; pointer-events: none; opacity: 0;
+  background: var(--card); color: var(--ink); border: 1px solid var(--hair-2);
+  border-radius: var(--r); box-shadow: 0 6px 18px rgba(33,38,30,.16);
+  padding: 8px 10px; font-size: 12.5px; min-width: 130px; transition: opacity .1s;
+}
+#tip.on { opacity: 1; }
+#tip .th { font-family: "Asap Condensed", sans-serif; font-weight: 600; font-size: 12.5px; letter-spacing: .3px; text-transform: uppercase; color: var(--ink-3); margin-bottom: 5px; }
+#tip .tr { display: flex; align-items: center; gap: 7px; margin-top: 3px; }
+#tip .tk { width: 12px; height: 2px; border-radius: 2px; flex: none; }
+#tip .tv { font-weight: 600; font-variant-numeric: tabular-nums; }
+#tip .tn { color: var(--ink-3); margin-left: auto; }
+footer { padding: 0 20px 28px; max-width: 1560px; margin: 0 auto; color: var(--ink-3); font-size: 12px; }
+</style>
+
+<div class="bar">
+  <div class="brand">
+    <span class="bs">Be<em>Soccer</em></span>
+    <span class="sep"></span>
+    <span class="app">Product Lab</span>
+  </div>
+  <div class="spacer"></div>
+  <span class="meta" id="stamp"></span>
+  <button class="ghost" id="theme" type="button" aria-label="Cambiar tema">Tema</button>
+</div>
+
+<div class="tabs" role="tablist" aria-label="Secciones del panel">
+  <button class="tab" role="tab" id="t-resumen"   aria-controls="p-resumen"   data-tab="resumen">Resumen</button>
+  <button class="tab" role="tab" id="t-uso"       aria-controls="p-uso"       data-tab="uso">Comportamiento</button>
+  <button class="tab" role="tab" id="t-idiomas"   aria-controls="p-idiomas"   data-tab="idiomas">Idiomas &amp; rating</button>
+  <button class="tab" role="tab" id="t-retencion" aria-controls="p-retencion" data-tab="retencion">Retención</button>
+  <button class="tab" role="tab" id="t-cro"       aria-controls="p-cro"       data-tab="cro">Embudos &amp; CRO<span class="n" id="expcount"></span></button>
+  <button class="tab" role="tab" id="t-segmentos" aria-controls="p-segmentos" data-tab="segmentos">Segmentos</button>
+</div>
+
+<div class="filters" role="group" aria-label="Filtros de métricas">
+  <div class="fgroup">
+    <span class="flabel">Periodo</span>
+    <div class="seg" id="f-range" role="group" aria-label="Rango de fechas">
+      <button type="button" data-v="7">7 d</button>
+      <button type="button" data-v="30">30 d</button>
+      <button type="button" data-v="90">90 d</button>
+      <button type="button" data-v="270">Temporada</button>
+    </div>
+  </div>
+  <div class="fgroup">
+    <span class="flabel">Plataforma</span>
+    <div class="seg" id="f-plat" role="group" aria-label="Plataforma">
+      <button type="button" data-v="all">Todas</button>
+      <button type="button" data-v="ios">iOS</button>
+      <button type="button" data-v="android">Android</button>
+      <button type="button" data-v="web">Web</button>
+    </div>
+  </div>
+  <div class="fgroup">
+    <label class="flabel" for="f-market">Mercado</label>
+    <select id="f-market"></select>
+  </div>
+  <div class="fgroup">
+    <label class="flabel" for="f-seg">Segmento</label>
+    <select id="f-seg">
+      <option value="all">Todos los usuarios</option>
+      <option value="new">Nuevos (&lt;7 d)</option>
+      <option value="ret">Recurrentes</option>
+      <option value="fan">Con equipo seguido</option>
+      <option value="premium">Premium</option>
+    </select>
+  </div>
+  <div class="fgroup">
+    <label class="switch"><input type="checkbox" id="f-compare" checked> Comparar periodo anterior</label>
+  </div>
+  <div class="spacer" style="flex:1"></div>
+  <button class="reset" id="f-reset" type="button">Restablecer filtros</button>
+</div>
+
+<main>
+  <section role="tabpanel" id="p-resumen"   aria-labelledby="t-resumen"   tabindex="0"></section>
+  <section role="tabpanel" id="p-uso"       aria-labelledby="t-uso"       tabindex="0" hidden></section>
+  <section role="tabpanel" id="p-idiomas"   aria-labelledby="t-idiomas"   tabindex="0" hidden></section>
+  <section role="tabpanel" id="p-retencion" aria-labelledby="t-retencion" tabindex="0" hidden></section>
+  <section role="tabpanel" id="p-cro"       aria-labelledby="t-cro"       tabindex="0" hidden></section>
+  <section role="tabpanel" id="p-segmentos" aria-labelledby="t-segmentos" tabindex="0" hidden></section>
+</main>
+<footer id="foot"></footer>
+<div id="tip" role="status" aria-live="polite"></div>
+
+<script>
+/* ==========================================================================
+   BeSoccer Product Lab — v0.1
+   Datos sintéticos deterministas: cada combinación de filtros produce
+   siempre las mismas cifras, y todas las tarjetas se recalculan contra
+   el mismo corte.
+   ========================================================================== */
+
+/* ---------- utilidades ---------- */
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const NF = new Intl.NumberFormat('es-ES');
+const nf = (v, d = 0) => new Intl.NumberFormat('es-ES', { minimumFractionDigits: d, maximumFractionDigits: d }).format(v);
+const compact = (v) => v >= 1e6 ? nf(v / 1e6, v / 1e6 < 10 ? 2 : 1) + ' M'
+  : v >= 1e4 ? nf(v / 1e3, 0) + ' K'
+  : v >= 1e3 ? nf(v / 1e3, 1) + ' K' : nf(v, 0);
+const pct = (v, d = 1) => nf(v, d) + ' %';
+const dur = (s) => Math.floor(s / 60) + ' min ' + String(Math.round(s % 60)).padStart(2, '0') + ' s';
+const signed = (v, d = 1) => (v > 0 ? '+' : v < 0 ? '−' : '') + nf(Math.abs(v), d);
+
+function hash(str) { let h = 2166136261; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+function rng(seed) { let a = typeof seed === 'string' ? hash(seed) : seed; return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+
+const SVGNS = 'http://www.w3.org/2000/svg';
+function S(tag, attrs = {}, kids = []) {
+  const n = document.createElementNS(SVGNS, tag);
+  for (const k in attrs) if (attrs[k] !== undefined && attrs[k] !== null) n.setAttribute(k, attrs[k]);
+  (Array.isArray(kids) ? kids : [kids]).forEach(c => c && n.appendChild(typeof c === 'string' ? document.createTextNode(c) : c));
+  return n;
+}
+function E(tag, cls, txt) { const n = document.createElement(tag); if (cls) n.className = cls; if (txt !== undefined) n.textContent = txt; return n; }
+function frag(html) { const t = document.createElement('template'); t.innerHTML = html; return t.content; }
+
+/* ---------- tooltip compartido (textContent, nunca innerHTML) ---------- */
+const TIP = $('#tip');
+function tipShow(x, y, title, rows) {
+  TIP.textContent = '';
+  const h = E('div', 'th', title); TIP.appendChild(h);
+  rows.forEach(r => {
+    const tr = E('div', 'tr');
+    if (r.color) { const k = E('span', 'tk'); k.style.background = r.color; tr.appendChild(k); }
+    tr.appendChild(E('span', 'tv', r.value));
+    tr.appendChild(E('span', 'tn', r.name));
+    TIP.appendChild(tr);
+  });
+  TIP.classList.add('on');
+  const w = TIP.offsetWidth, hh = TIP.offsetHeight;
+  TIP.style.left = clamp(x + 14, 8, innerWidth - w - 8) + 'px';
+  TIP.style.top = clamp(y - hh - 12, 8, innerHeight - hh - 8) + 'px';
+}
+const tipHide = () => TIP.classList.remove('on');
+addEventListener('scroll', tipHide, { passive: true });
+
+/* ---------- montaje de gráficas responsivas ---------- */
+const MOUNTED = new WeakMap();
+const RO = new ResizeObserver(entries => {
+  /* La redibujada se aplaza fuera del callback: mutar dentro del propio
+     ResizeObserver dispara el aviso de bucle del navegador. */
+  for (const en of entries) {
+    const fn = MOUNTED.get(en.target);
+    const w = Math.round(en.contentRect.width);
+    if (!fn || w <= 40 || w === fn.w) continue;
+    fn.w = w;
+    clearTimeout(fn.t);
+    fn.t = setTimeout(() => {
+      const host = en.target;
+      if (MOUNTED.get(host) !== fn) return;
+      host.textContent = '';
+      host.appendChild(fn.draw(fn.w));
+    }, 40);
+  }
+});
+/* Desmontar antes de sustituir el contenido: si queda un redibujado
+   pendiente del ResizeObserver, sobreescribiría la vista de tabla. */
+function unmount(host) {
+  const fn = MOUNTED.get(host);
+  if (fn) clearTimeout(fn.t);
+  MOUNTED.delete(host);
+  RO.unobserve(host);
+}
+function mount(host, draw) {
+  const w = Math.max(240, Math.round(host.getBoundingClientRect().width) || 480);
+  MOUNTED.set(host, { draw, w });
+  host.textContent = '';
+  host.appendChild(draw(w));
+  RO.observe(host);
+  return host;
+}
+
+/* ==========================================================================
+   MODELO DE DATOS
+   ========================================================================== */
+const TODAY = new Date(2026, 8, 2);
+const RANGES = { 7: 'últimos 7 días', 30: 'últimos 30 días', 90: 'últimos 90 días', 270: 'temporada 25/26' };
+const PREV = { 7: 'los 7 días anteriores', 30: 'los 30 días anteriores', 90: 'los 90 días anteriores', 270: 'la temporada anterior' };
+const PLATS = {
+  all:     { name: 'Todas',   share: 1.00, spu: 1.00, len: 1.00, d7: 1.00, rating: 1.00, prem: 1.00 },
+  ios:     { name: 'iOS',     share: 0.31, spu: 1.06, len: 1.09, d7: 1.10, rating: 1.03, prem: 1.35 },
+  android: { name: 'Android', share: 0.52, spu: 0.98, len: 0.96, d7: 0.97, rating: 0.99, prem: 0.82 },
+  web:     { name: 'Web',     share: 0.17, spu: 0.74, len: 0.68, d7: 0.66, rating: 1.00, prem: 0.55 },
+};
+const SEGS = {
+  all:     { name: 'Todos los usuarios', share: 1.00, spu: 1.00, len: 1.00, d7: 1.00, prem: 1.00 },
+  new:     { name: 'Nuevos (<7 d)',      share: 0.14, spu: 0.72, len: 0.74, d7: 0.55, prem: 0.35 },
+  ret:     { name: 'Recurrentes',        share: 0.63, spu: 1.28, len: 1.22, d7: 1.34, prem: 1.20 },
+  fan:     { name: 'Con equipo seguido', share: 0.48, spu: 1.42, len: 1.36, d7: 1.52, prem: 1.60 },
+  premium: { name: 'Premium',            share: 0.021, spu: 1.90, len: 2.10, d7: 1.86, prem: 1.00 },
+};
+const MARKETS = [
+  { id: 'all', lang: 'Todos los mercados', code: 'ALL', share: 1.000, rating: 4.42, reviews: 107400, growth: 6.4 },
+  { id: 'es',  lang: 'Español',            code: 'ES',  share: 0.361, rating: 4.62, reviews: 41250, growth: 3.1 },
+  { id: 'en',  lang: 'Inglés',             code: 'EN',  share: 0.187, rating: 4.31, reviews: 22380, growth: 8.2 },
+  { id: 'pt',  lang: 'Portugués',          code: 'PT',  share: 0.142, rating: 4.48, reviews: 15810, growth: 11.7 },
+  { id: 'ar',  lang: 'Árabe',              code: 'AR',  share: 0.094, rating: 4.07, reviews: 9640,  growth: 19.4 },
+  { id: 'fr',  lang: 'Francés',            code: 'FR',  share: 0.061, rating: 4.22, reviews: 6120,  growth: 4.6 },
+  { id: 'id',  lang: 'Indonesio',          code: 'ID',  share: 0.052, rating: 3.94, reviews: 5180,  growth: 22.8 },
+  { id: 'it',  lang: 'Italiano',           code: 'IT',  share: 0.048, rating: 4.36, reviews: 4310,  growth: 2.2 },
+  { id: 'de',  lang: 'Alemán',             code: 'DE',  share: 0.037, rating: 4.11, reviews: 3390,  growth: 1.4 },
+  { id: 'tr',  lang: 'Turco',              code: 'TR',  share: 0.018, rating: 4.19, reviews: 1620,  growth: 9.1 },
+];
+const MKT = Object.fromEntries(MARKETS.map(m => [m.id, m]));
+
+const BASE = { dau: 3120000, mau: 11400000, spu: 3.42, len: 252, d7: 38.6, prem: 2.14, notif: 61.3, rating: 4.42 };
+
+const state = { range: 30, plat: 'all', market: 'all', seg: 'all', compare: true, tab: 'resumen' };
+const key = (extra = '') => [state.range, state.plat, state.market, state.seg, extra].join('|');
+
+function mods() {
+  const p = PLATS[state.plat], s = SEGS[state.seg], m = MKT[state.market];
+  return { p, s, m, share: p.share * (state.seg === 'all' ? 1 : s.share) * m.share };
+}
+/* Una métrica escalar bajo el corte activo. */
+function metric(name) {
+  const { p, s, m } = mods();
+  const r = rng(key(name)), jitter = 1 + (r() - 0.5) * 0.05;
+  switch (name) {
+    case 'dau':   return Math.round(BASE.dau * p.share * (state.seg === 'all' ? 1 : s.share) * m.share * jitter);
+    case 'mau':   return Math.round(BASE.mau * p.share * (state.seg === 'all' ? 1 : s.share) * m.share * jitter);
+    case 'spu':   return BASE.spu * p.spu * s.spu * jitter;
+    case 'len':   return BASE.len * p.len * s.len * jitter;
+    case 'd7':    return clamp(BASE.d7 * p.d7 * s.d7 * jitter, 4, 92);
+    case 'prem':  return clamp(BASE.prem * p.prem * s.prem * jitter, .1, 100);
+    case 'notif': return clamp(BASE.notif * (state.plat === 'ios' ? .82 : state.plat === 'web' ? .54 : 1.12) * (state.seg === 'fan' ? 1.24 : state.seg === 'new' ? .78 : 1) * jitter, 5, 96);
+    case 'rating': return clamp(m.rating * p.rating * (state.seg === 'premium' ? 1.04 : 1) * (1 + (r() - .5) * .01), 1, 5);
+    case 'stick': return clamp((metric('dau') / metric('mau')) * 100, 4, 90);
+  }
+  return 0;
+}
+
+/* ---------- series temporales ---------- */
+/* Efecto jornada por día de la semana (0 = domingo). Normalizado a media 1
+   para que la media del periodo coincida con el nivel base de la métrica. */
+const MATCH = { 0: 1.129, 1: 0.842, 2: 0.995, 3: 1.022, 4: 0.914, 5: 0.932, 6: 1.165 };
+function dayLabel(d) { return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0'); }
+
+/* Devuelve {x:[etiquetas], v:[valores], bands:[índices de jornada], step:'día'|'semana', dates:[]} */
+function series(name, opts = {}) {
+  const n = state.range, offset = opts.offset || 0;
+  const weekly = n > 60;
+  const pts = weekly ? Math.round(n / 7) : n;
+  const base = metric(name);
+  const r = rng(key(name + '|s' + offset));
+  const trendPct = ({ dau: .11, spu: .04, len: -.03, d7: .06, prem: .17, rating: .02, notif: .05 })[name] ?? .05;
+  const out = { x: [], v: [], bands: [], dates: [], step: weekly ? 'semana' : 'día' };
+  for (let i = 0; i < pts; i++) {
+    const idxFromEnd = pts - 1 - i;
+    const d = new Date(TODAY);
+    d.setDate(d.getDate() - (idxFromEnd + offset) * (weekly ? 7 : 1));
+    const t = i / Math.max(1, pts - 1);
+    const trend = 1 - trendPct * (1 - t);
+    const season = weekly ? 1 + Math.sin(i / 2.4) * .035 : (MATCH[d.getDay()] ?? 1);
+    const seasonAdj = name === 'dau' || name === 'spu' ? season : 1 + (season - 1) * .28;
+    const noise = 1 + (r() - .5) * (weekly ? .035 : .05);
+    out.v.push(base * trend * seasonAdj * noise / (name === 'dau' || name === 'mau' ? 1 : 1));
+    out.x.push(weekly ? 'sem. ' + dayLabel(d) : dayLabel(d));
+    out.dates.push(d);
+    if (!weekly && (d.getDay() === 6 || d.getDay() === 0)) out.bands.push(i);
+  }
+  if (name === 'dau' || name === 'mau') out.v = out.v.map(v => Math.round(v));
+  return out;
+}
+/* Base de usuarios del corte: media del periodo. Todas las tarjetas que
+   cuentan usuarios parten de aquí, así ninguna cifra contradice al héroe. */
+function activeBase() {
+  const c = series('dau');
+  return c.v.reduce((a, b) => a + b, 0) / c.v.length;
+}
+function deltaOf(name) {
+  const cur = series(name), prev = series(name, { offset: state.range });
+  const avg = a => a.reduce((s, v) => s + v, 0) / a.length;
+  const a = avg(cur.v), b = avg(prev.v);
+  return { cur: a, prev: b, pct: b ? (a - b) / b * 100 : 0 };
+}
+</script>
+
+<script>
+/* ==========================================================================
+   PRIMITIVAS DE GRÁFICA (SVG a mano, sin librerías)
+   Marcas finas · rejilla hairline sólida · hueco de 2 px en color de
+   superficie entre marcas · anillo de 2 px en los puntos · etiquetas
+   directas selectivas · capa de hover en todas.
+   ========================================================================== */
+function niceTicks(min, max, count = 4) {
+  if (max === min) { max = min + 1; }
+  const span = max - min, raw = span / count, mag = Math.pow(10, Math.floor(Math.log10(raw)));
+  const step = [1, 2, 2.5, 5, 10].map(m => m * mag).find(s => s >= raw) || 10 * mag;
+  const lo = Math.floor(min / step) * step, hi = Math.ceil(max / step) * step;
+  const out = []; for (let v = lo; v <= hi + step * .001; v += step) out.push(+v.toFixed(10));
+  return out;
+}
+function svgRoot(w, h) {
+  const s = S('svg', { viewBox: `0 0 ${w} ${h}`, width: w, height: h, role: 'img' });
+  s.style.width = '100%'; s.style.height = 'auto';
+  return s;
+}
+const gridLine = (x1, x2, y) => S('line', { x1, x2, y1: y, y2: y, stroke: 'var(--grid)', 'stroke-width': 1 });
+const roundTopPath = (x, y, w, h, r) => {
+  r = Math.min(r, w / 2, h);
+  return `M${x} ${y + h}L${x} ${y + r}Q${x} ${y} ${x + r} ${y}L${x + w - r} ${y}Q${x + w} ${y} ${x + w} ${y + r}L${x + w} ${y + h}Z`;
+};
+const roundRightPath = (x, y, w, h, r) => {
+  r = Math.min(r, h / 2, w);
+  return `M${x} ${y}L${x + w - r} ${y}Q${x + w} ${y} ${x + w} ${y + r}L${x + w} ${y + h - r}Q${x + w} ${y + h} ${x + w - r} ${y + h}L${x} ${y + h}Z`;
+};
+
+/* ---------- línea temporal con crosshair ---------- */
+function lineChart(cfg) {
+  const fmt = cfg.fmt || (v => nf(v, 0));
+  return (w) => {
+    const h = cfg.height || 208;
+    const pad = { t: 12, r: cfg.padR ?? 58, b: 26, l: cfg.padL ?? 54 };
+    const iw = Math.max(60, w - pad.l - pad.r), ih = h - pad.t - pad.b;
+    const all = cfg.series.flatMap(s => s.values);
+    const lo = cfg.yZero ? 0 : Math.min(...all), hi = Math.max(...all);
+    let ticks = niceTicks(lo - (cfg.yZero ? 0 : (hi - lo) * .12), hi + (hi - lo) * .08 || hi * 1.05, 4);
+    if (cfg.yMax !== undefined) {           /* nada por encima del techo real de la escala */
+      ticks = ticks.filter(t => t <= cfg.yMax);
+      if (ticks[ticks.length - 1] < cfg.yMax) ticks.push(cfg.yMax);
+    }
+    const y0 = ticks[0], y1 = ticks[ticks.length - 1];
+    const n = cfg.x.length;
+    const X = i => pad.l + (n === 1 ? iw / 2 : i * iw / (n - 1));
+    const Y = v => pad.t + ih - (v - y0) / (y1 - y0) * ih;
+    const svg = svgRoot(w, h);
+
+    /* bandas de jornada — dato real del contexto: los picos son días de partido */
+    if (cfg.bands && cfg.bands.length) {
+      const bw = n > 1 ? iw / (n - 1) : iw;
+      cfg.bands.forEach(i => svg.appendChild(S('rect', {
+        x: clamp(X(i) - bw / 2, pad.l, pad.l + iw), y: pad.t,
+        width: Math.min(bw, pad.l + iw - clamp(X(i) - bw / 2, pad.l, pad.l + iw)),
+        height: ih, fill: 'var(--sunken)'
+      })));
+    }
+    ticks.forEach(t => {
+      svg.appendChild(gridLine(pad.l, pad.l + iw, Y(t)));
+      svg.appendChild(S('text', { x: pad.l - 8, y: Y(t) + 3.5, class: 'tick', 'text-anchor': 'end' }, fmt(t)));
+    });
+    svg.appendChild(S('line', { x1: pad.l, x2: pad.l + iw, y1: pad.t + ih, y2: pad.t + ih, stroke: 'var(--axis)', 'stroke-width': 1 }));
+
+    const every = Math.max(1, Math.ceil(n / (iw / 62)));
+    cfg.x.forEach((lb, i) => {
+      if (i % every && i !== n - 1) return;
+      svg.appendChild(S('text', { x: X(i), y: h - 8, class: 'tick', 'text-anchor': i === n - 1 ? 'end' : 'middle' }, lb.replace('sem. ', '')));
+    });
+
+    /* área sólo si hay una serie destacada única */
+    const emph = cfg.series.filter(s => s.emph !== false);
+    if (cfg.series.length === 1) {
+      const s = cfg.series[0];
+      const d = s.values.map((v, i) => `${i ? 'L' : 'M'}${X(i)} ${Y(v)}`).join('') +
+        `L${X(n - 1)} ${pad.t + ih}L${X(0)} ${pad.t + ih}Z`;
+      svg.appendChild(S('path', { d, fill: s.color, 'fill-opacity': .10 }));
+    }
+    cfg.series.forEach(s => {
+      svg.appendChild(S('path', {
+        d: s.values.map((v, i) => `${i ? 'L' : 'M'}${X(i)} ${Y(v)}`).join(''),
+        fill: 'none', stroke: s.color, 'stroke-width': 2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round'
+      }));
+    });
+    /* punto final + etiqueta directa selectiva (evitando colisiones) */
+    const ends = cfg.series.map((s, k) => ({ s, k, y: Y(s.values[n - 1]) })).sort((a, b) => a.y - b.y);
+    const shown = [];
+    ends.forEach(e => {
+      const collide = shown.some(o => Math.abs(o.y - e.y) < 15);
+      if (!collide || e.s.emph) shown.push(e);
+    });
+    cfg.series.forEach(s => {
+      svg.appendChild(S('circle', { cx: X(n - 1), cy: Y(s.values[n - 1]), r: 4.5, fill: s.color, stroke: 'var(--card)', 'stroke-width': 2 }));
+    });
+    shown.forEach(e => svg.appendChild(S('text', {
+      x: X(n - 1) + 9, y: e.y + 4, class: 'dlabel' + (e.s.emph ? '' : ' sec')
+    }, fmt(e.s.values[n - 1]))));
+
+    /* capa de hover / teclado */
+    const cross = S('line', { y1: pad.t, y2: pad.t + ih, stroke: 'var(--axis)', 'stroke-width': 1, opacity: 0 });
+    svg.appendChild(cross);
+    const dots = cfg.series.map(s => { const c = S('circle', { r: 4.5, fill: s.color, stroke: 'var(--card)', 'stroke-width': 2, opacity: 0 }); svg.appendChild(c); return c; });
+    const hit = S('rect', { x: pad.l, y: pad.t, width: iw, height: ih, class: 'hit', tabindex: 0, role: 'application', 'aria-label': cfg.aria || 'Serie temporal, usa las flechas para recorrer los puntos' });
+    let idx = -1;
+    const showAt = (i, cx, cy) => {
+      idx = clamp(i, 0, n - 1);
+      cross.setAttribute('x1', X(idx)); cross.setAttribute('x2', X(idx)); cross.setAttribute('opacity', 1);
+      dots.forEach((d, k) => { d.setAttribute('cx', X(idx)); d.setAttribute('cy', Y(cfg.series[k].values[idx])); d.setAttribute('opacity', 1); });
+      const r = svg.getBoundingClientRect(), sc = r.width / w;
+      tipShow(cx ?? r.left + X(idx) * sc, cy ?? r.top + Y(cfg.series[0].values[idx]) * sc,
+        (cfg.step === 'semana' ? 'Semana del ' : '') + cfg.x[idx].replace('sem. ', ''),
+        cfg.series.map(s => ({ color: s.color, value: fmt(s.values[idx]), name: s.name })));
+    };
+    const clear = () => { cross.setAttribute('opacity', 0); dots.forEach(d => d.setAttribute('opacity', 0)); tipHide(); };
+    hit.addEventListener('pointermove', ev => {
+      const r = svg.getBoundingClientRect(), sc = r.width / w;
+      showAt(Math.round(((ev.clientX - r.left) / sc - pad.l) / (iw / Math.max(1, n - 1))), ev.clientX, ev.clientY);
+    });
+    hit.addEventListener('pointerleave', clear);
+    hit.addEventListener('focus', () => showAt(idx < 0 ? n - 1 : idx));
+    hit.addEventListener('blur', clear);
+    hit.addEventListener('keydown', ev => {
+      if (ev.key === 'ArrowRight') { showAt(idx + 1); ev.preventDefault(); }
+      if (ev.key === 'ArrowLeft') { showAt(idx - 1); ev.preventDefault(); }
+      if (ev.key === 'Escape') clear();
+    });
+    svg.appendChild(hit);
+    return svg;
+  };
+}
+
+/* ---------- sparkline (12 puntos, contexto en gris + final en acento) ---------- */
+function sparkline(values, color, w = 118, h = 30) {
+  const lo = Math.min(...values), hi = Math.max(...values), n = values.length;
+  const X = i => 1 + i * (w - 2) / (n - 1), Y = v => h - 3 - (v - lo) / (hi - lo || 1) * (h - 6);
+  const svg = svgRoot(w, h); svg.setAttribute('aria-hidden', 'true'); svg.style.width = w + 'px';
+  svg.appendChild(S('path', { d: values.map((v, i) => `${i ? 'L' : 'M'}${X(i)} ${Y(v)}`).join(''), fill: 'none', stroke: 'var(--deemph)', 'stroke-width': 2, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }));
+  const tail = values.slice(-3);
+  svg.appendChild(S('path', { d: tail.map((v, i) => `${i ? 'L' : 'M'}${X(n - 3 + i)} ${Y(v)}`).join(''), fill: 'none', stroke: color, 'stroke-width': 2, 'stroke-linecap': 'round' }));
+  svg.appendChild(S('circle', { cx: X(n - 1), cy: Y(values[n - 1]), r: 3, fill: color, stroke: 'var(--card)', 'stroke-width': 2 }));
+  return svg;
+}
+
+/* ---------- barras horizontales (una serie, un color) ---------- */
+function barsH(cfg) {
+  const fmt = cfg.fmt || (v => nf(v, 0));
+  return (w) => {
+    const rows = cfg.rows, rowH = cfg.rowH || 26, labelW = cfg.labelW || 118, valW = cfg.valW || 62;
+    const h = rows.length * rowH + 8;
+    const iw = Math.max(40, w - labelW - valW);
+    const max = cfg.max ?? Math.max(...rows.map(r => r.value));
+    const min = cfg.min ?? 0;
+    const svg = svgRoot(w, h);
+    rows.forEach((r, i) => {
+      const y = i * rowH + 4, bh = Math.min(cfg.thick || 16, rowH - 8);
+      const bw = Math.max(2, (r.value - min) / (max - min) * iw);
+      svg.appendChild(S('text', { x: 0, y: y + bh / 2 + 4, class: 'tick', fill: 'var(--ink-2)' }, r.label));
+      svg.appendChild(S('rect', { x: labelW, y: y + (bh - 6) / 2, width: iw, height: 6, fill: 'var(--sunken)' }));
+      svg.appendChild(S('path', { d: roundRightPath(labelW, y, bw, bh, 4), fill: r.color || cfg.color || 'var(--s1)' }));
+      svg.appendChild(S('text', { x: labelW + iw + 8, y: y + bh / 2 + 4, class: 'dlabel' }, fmt(r.value)));
+      /* La nota se rotula dentro de la barra sólo si el texto cabe con aire;
+         si no, se queda en el tooltip y en la tabla. */
+      if (r.note && bw > r.note.length * 6.1 + 20) {
+        svg.appendChild(S('text', {
+          x: labelW + bw - 9, y: y + bh / 2 + 4, 'text-anchor': 'end',
+          style: `font-size:11.5px;font-variant-numeric:tabular-nums;fill:${inkOn(r.color || cfg.color || 'var(--s1)')}`
+        }, r.note));
+      }
+      const hit = S('rect', { x: 0, y: i * rowH, width: w, height: rowH, class: 'hit cellhit', tabindex: 0, 'aria-label': `${r.label}: ${fmt(r.value)}${r.note ? ', ' + r.note : ''}` });
+      const show = ev => { const b = svg.getBoundingClientRect(); tipShow(ev?.clientX ?? b.left + labelW + bw, ev?.clientY ?? b.top + y, r.label, [{ color: r.color || cfg.color || 'var(--s1)', value: fmt(r.value), name: cfg.unit || '' }].concat(r.rows || [])); };
+      hit.addEventListener('pointermove', show); hit.addEventListener('pointerleave', tipHide);
+      hit.addEventListener('focus', () => show()); hit.addEventListener('blur', tipHide);
+      svg.appendChild(hit);
+    });
+    return svg;
+  };
+}
+
+/* ---------- barras apiladas 100 % (parte-todo, hueco de 2 px) ---------- */
+function stackedRows(cfg) {
+  return (w) => {
+    const rows = cfg.rows, keys = cfg.keys, rowH = 44, labelW = cfg.labelW || 78;
+    const h = rows.length * rowH + 4;
+    const iw = Math.max(60, w - labelW - 4);
+    const svg = svgRoot(w, h);
+    rows.forEach((r, ri) => {
+      const total = keys.reduce((s, k) => s + r.values[k.id], 0);
+      const y = ri * rowH + 10, bh = 22;
+      svg.appendChild(S('text', { x: 0, y: y + bh / 2 + 4, class: 'tick', fill: 'var(--ink-2)' }, r.label));
+      let x = labelW;
+      keys.forEach((k, ki) => {
+        const share = r.values[k.id] / total;
+        const segW = Math.max(0, share * iw - (ki < keys.length - 1 ? 2 : 0));
+        const first = ki === 0, last = ki === keys.length - 1;
+        const d = last ? roundRightPath(x, y, segW, bh, 4)
+          : first ? `M${x + 4} ${y}L${x + segW} ${y}L${x + segW} ${y + bh}L${x + 4} ${y + bh}Q${x} ${y + bh} ${x} ${y + bh - 4}L${x} ${y + 4}Q${x} ${y} ${x + 4} ${y}Z`
+            : `M${x} ${y}L${x + segW} ${y}L${x + segW} ${y + bh}L${x} ${y + bh}Z`;
+        svg.appendChild(S('path', { d, fill: k.color }));
+        const txt = nf(share * 100, 0) + '%';
+        if (segW > 34) svg.appendChild(S('text', { x: x + segW / 2, y: y + bh / 2 + 4, 'text-anchor': 'middle', style: `font-size:11.5px;font-weight:600;fill:${k.ink || '#fff'}` }, txt));
+        const hit = S('rect', { x, y: y - 6, width: segW + 2, height: bh + 12, class: 'hit cellhit', tabindex: 0, 'aria-label': `${r.label}, ${k.name}: ${txt}` });
+        const show = ev => { const b = svg.getBoundingClientRect(); tipShow(ev?.clientX ?? b.left + x, ev?.clientY ?? b.top + y, r.label, [{ color: k.color, value: nf(share * 100, 1) + ' %', name: k.name }, { value: compact(r.values[k.id]), name: cfg.unit || 'sesiones' }]); };
+        hit.addEventListener('pointermove', show); hit.addEventListener('pointerleave', tipHide);
+        hit.addEventListener('focus', () => show()); hit.addEventListener('blur', tipHide);
+        svg.appendChild(hit);
+        x += share * iw;
+      });
+    });
+    return svg;
+  };
+}
+</script>
+
+<script>
+/* ---------- mapa de calor / matriz de cohortes (secuencial, un tono) ---------- */
+const SEQ = ['var(--q1)', 'var(--q2)', 'var(--q3)', 'var(--q4)', 'var(--q5)', 'var(--q6)'];
+/* La tinta de la celda se decide por la luminancia del relleno, no por el paso:
+   en modo oscuro los pasos altos de la rampa son los CLAROS. */
+function heatmap(cfg) {
+  const fmt = cfg.fmt || (v => nf(v, 0));
+  return (w) => {
+    const rowsN = cfg.rows.length, colsN = cfg.cols.length;
+    const labelW = cfg.labelW || 74, topH = 18, rowH = cfg.rowH || 22, gap = 2;
+    const h = topH + rowsN * rowH + 4;
+    const cw = Math.max(8, (w - labelW) / colsN);
+    const vals = cfg.rows.flatMap(r => r.values.filter(v => v !== null));
+    const lo = cfg.min ?? Math.min(...vals), hi = cfg.max ?? Math.max(...vals);
+    const bin = v => clamp(Math.floor((v - lo) / ((hi - lo) || 1) * SEQ.length), 0, SEQ.length - 1);
+    const svg = svgRoot(w, h);
+    cfg.cols.forEach((c, ci) => {
+      if (colsN > 14 && ci % 2) return;
+      svg.appendChild(S('text', { x: labelW + ci * cw + cw / 2, y: 12, class: 'tick', 'text-anchor': 'middle' }, c));
+    });
+    cfg.rows.forEach((r, ri) => {
+      const y = topH + ri * rowH;
+      svg.appendChild(S('text', { x: 0, y: y + rowH / 2 + 3.5, class: 'tick', fill: 'var(--ink-2)' }, r.label));
+      r.values.forEach((v, ci) => {
+        if (v === null) return;
+        const neutral = (cfg.neutralCols || []).includes(ci);
+        const b = bin(v), x = labelW + ci * cw;
+        const fill = neutral ? 'var(--sunken)' : SEQ[b];
+        svg.appendChild(S('rect', { x, y, width: Math.max(1, cw - gap), height: rowH - gap, fill, rx: 1 }));
+        if (cfg.showValues && cw > 34) svg.appendChild(S('text', { x: x + (cw - gap) / 2, y: y + rowH / 2 + 3.5, 'text-anchor': 'middle', style: `font-size:11px;font-variant-numeric:tabular-nums;fill:${neutral ? 'var(--ink-3)' : inkOn(fill)}` }, fmt(v)));
+        const hit = S('rect', { x, y, width: Math.max(1, cw - gap), height: rowH - gap, class: 'hit cellhit', tabindex: 0, 'aria-label': `${r.label}, ${cfg.cols[ci]}: ${fmt(v)}` });
+        const show = ev => { const bb = svg.getBoundingClientRect(); tipShow(ev?.clientX ?? bb.left + x, ev?.clientY ?? bb.top + y, r.label + ' · ' + cfg.cols[ci], [{ color: fill, value: fmt(v), name: cfg.unit || '' }]); };
+        hit.addEventListener('pointermove', show); hit.addEventListener('pointerleave', tipHide);
+        hit.addEventListener('focus', () => show()); hit.addEventListener('blur', tipHide);
+        svg.appendChild(hit);
+      });
+    });
+    return svg;
+  };
+}
+function scaleLegend(lo, hi, fmt = v => nf(v, 0)) {
+  const box = E('div', 'legend');
+  box.style.alignItems = 'center';
+  box.appendChild(E('span', '', fmt(lo)));
+  SEQ.forEach(c => { const i = E('i', 'rect'); i.style.background = c; i.style.width = '22px'; i.style.height = '9px'; box.appendChild(i); });
+  box.appendChild(E('span', '', fmt(hi)));
+  return box;
+}
+
+/* ---------- embudo (rampa ordinal) ---------- */
+const ORD = ['var(--o1)', 'var(--o2)', 'var(--o3)', 'var(--o4)', 'var(--o5)'];
+function funnel(cfg) {
+  return (w) => {
+    const steps = cfg.steps, rowH = 52, valW = 128;
+    const h = steps.length * rowH + 12;   /* aire arriba: la etiqueta del paso 1 va encima de su barra */
+    const iw = Math.max(60, w - valW);
+    const top = steps[0].value;
+    const svg = svgRoot(w, h);
+    steps.forEach((s, i) => {
+      const y = i * rowH + 20, bh = 22;
+      const bw = Math.max(3, s.value / top * iw);
+      const c = ORD[Math.min(i, ORD.length - 1)];
+      svg.appendChild(S('text', { x: 0, y: y - 4, style: 'font-size:12.5px;fill:var(--ink-2)' }, `${i + 1}. ${s.label}`));
+      svg.appendChild(S('path', { d: roundRightPath(0, y, bw, bh, 4), fill: c }));
+      svg.appendChild(S('text', { x: iw + 10, y: y + bh / 2 + 4, class: 'dlabel' }, compact(s.value)));
+      svg.appendChild(S('text', { x: iw + 10, y: y + bh / 2 + 19, class: 'dlabel sec' }, nf(s.value / top * 100, 1) + ' % del inicio'));
+      if (i > 0) {
+        const drop = (1 - s.value / steps[i - 1].value) * 100;
+        const bad = drop > 45;
+        svg.appendChild(S('text', {
+          x: 4, y: y - 20, style: `font-size:11.5px;font-weight:600;fill:${bad ? 'var(--crit)' : 'var(--ink-3)'}`
+        }, `${bad ? '▼' : '↓'} caída ${nf(drop, 1)} %`));
+      }
+      const hit = S('rect', { x: 0, y: i * rowH + 14, width: w, height: rowH, class: 'hit cellhit', tabindex: 0, 'aria-label': `${s.label}: ${NF.format(Math.round(s.value))}, ${nf(s.value / top * 100, 1)} % del inicio` });
+      const show = ev => { const b = svg.getBoundingClientRect(); tipShow(ev?.clientX ?? b.left + bw, ev?.clientY ?? b.top + y, s.label, [{ color: c, value: NF.format(Math.round(s.value)), name: 'usuarios' }, { value: nf(s.value / top * 100, 1) + ' %', name: 'del inicio' }].concat(s.hint ? [{ value: s.hint, name: '' }] : [])); };
+      hit.addEventListener('pointermove', show); hit.addEventListener('pointerleave', tipHide);
+      hit.addEventListener('focus', () => show()); hit.addEventListener('blur', tipHide);
+      svg.appendChild(hit);
+    });
+    return svg;
+  };
+}
+
+/* ---------- dumbbell antes → después (un tono, dos pasos) ---------- */
+function dumbbell(cfg) {
+  const fmt = cfg.fmt || (v => nf(v, 1) + ' %');
+  return (w) => {
+    const rows = cfg.rows, rowH = 30, labelW = cfg.labelW || 150, valW = 74;
+    const h = rows.length * rowH + 22;
+    const iw = Math.max(60, w - labelW - valW);
+    const lo = 0, hi = cfg.max ?? Math.max(...rows.flatMap(r => [r.a, r.b])) * 1.08;
+    const X = v => labelW + (v - lo) / (hi - lo) * iw;
+    const svg = svgRoot(w, h);
+    niceTicks(lo, hi, 4).forEach(t => {
+      if (t > hi) return;
+      svg.appendChild(S('line', { x1: X(t), x2: X(t), y1: 4, y2: rows.length * rowH + 2, stroke: 'var(--grid)', 'stroke-width': 1 }));
+      svg.appendChild(S('text', { x: X(t), y: h - 6, class: 'tick', 'text-anchor': 'middle' }, fmt(t)));
+    });
+    rows.forEach((r, i) => {
+      const y = i * rowH + 6 + 11;
+      svg.appendChild(S('text', { x: 0, y: y + 4, class: 'tick', fill: 'var(--ink-2)' }, r.label));
+      svg.appendChild(S('line', { x1: X(r.a), x2: X(r.b), y1: y, y2: y, stroke: 'var(--q3)', 'stroke-width': 3, 'stroke-linecap': 'round' }));
+      svg.appendChild(S('circle', { cx: X(r.a), cy: y, r: 5, fill: 'var(--q3)', stroke: 'var(--card)', 'stroke-width': 2 }));
+      svg.appendChild(S('circle', { cx: X(r.b), cy: y, r: 5, fill: 'var(--q6)', stroke: 'var(--card)', 'stroke-width': 2 }));
+      const d = r.b - r.a;
+      svg.appendChild(S('text', { x: labelW + iw + 8, y: y + 4, style: `font-size:12px;font-weight:600;font-variant-numeric:tabular-nums;fill:${d >= 0 ? 'var(--good)' : 'var(--crit)'}` }, (d >= 0 ? '▲ ' : '▼ ') + nf(Math.abs(d), 1) + ' pp'));
+      const hit = S('rect', { x: 0, y: i * rowH + 6, width: w, height: rowH, class: 'hit cellhit', tabindex: 0, 'aria-label': `${r.label}: de ${fmt(r.a)} a ${fmt(r.b)}` });
+      const show = ev => { const b = svg.getBoundingClientRect(); tipShow(ev?.clientX ?? b.left + X(r.b), ev?.clientY ?? b.top + y, r.label, [{ color: 'var(--q3)', value: fmt(r.a), name: cfg.aName || 'antes' }, { color: 'var(--q6)', value: fmt(r.b), name: cfg.bName || 'ahora' }]); };
+      hit.addEventListener('pointermove', show); hit.addEventListener('pointerleave', tipHide);
+      hit.addEventListener('focus', () => show()); hit.addEventListener('blur', tipHide);
+      svg.appendChild(hit);
+    });
+    return svg;
+  };
+}
+
+/* ---------- barras divergentes (polos frío/cálido, cero neutro) ---------- */
+function diverging(cfg) {
+  const fmt = cfg.fmt || (v => signed(v, 2));
+  return (w) => {
+    const rows = cfg.rows, rowH = 26, labelW = cfg.labelW || 96, valW = 66;
+    const h = rows.length * rowH + 6;
+    const iw = Math.max(60, w - labelW - valW);
+    const m = cfg.max ?? Math.max(...rows.map(r => Math.abs(r.value))) * 1.28;
+    const mid = labelW + iw / 2;
+    const svg = svgRoot(w, h);
+    svg.appendChild(S('rect', { x: mid - 1, y: 0, width: 2, height: rows.length * rowH + 2, fill: 'var(--div-mid)' }));
+    rows.forEach((r, i) => {
+      const y = i * rowH + 5, bh = 15;
+      const len = Math.abs(r.value) / m * (iw / 2);
+      const pos = r.value >= 0;
+      const c = pos ? 'var(--div-pos)' : 'var(--div-neg)';
+      svg.appendChild(S('text', { x: 0, y: y + bh / 2 + 4, class: 'tick', fill: 'var(--ink-2)' }, r.label));
+      const d = pos ? roundRightPath(mid + 1, y, len, bh, 4)
+        : `M${mid - 1} ${y}L${mid - 1} ${y + bh}L${mid - len + 4} ${y + bh}Q${mid - len} ${y + bh} ${mid - len} ${y + bh - 4}L${mid - len} ${y + 4}Q${mid - len} ${y} ${mid - len + 4} ${y}Z`;
+      svg.appendChild(S('path', { d, fill: c }));
+      svg.appendChild(S('text', { x: labelW + iw + 8, y: y + bh / 2 + 4, style: `font-size:12px;font-weight:600;font-variant-numeric:tabular-nums;fill:var(--ink)` }, (pos ? '▲ ' : '▼ ') + fmt(r.value)));
+      const hit = S('rect', { x: 0, y: i * rowH, width: w, height: rowH, class: 'hit cellhit', tabindex: 0, 'aria-label': `${r.label}: ${pos ? 'por encima' : 'por debajo'} de la media, ${fmt(r.value)}` });
+      const show = ev => { const b = svg.getBoundingClientRect(); tipShow(ev?.clientX ?? b.left + mid, ev?.clientY ?? b.top + y, r.label, [{ color: c, value: fmt(r.value), name: cfg.unit || 'vs media' }].concat(r.rows || [])); };
+      hit.addEventListener('pointermove', show); hit.addEventListener('pointerleave', tipHide);
+      hit.addEventListener('focus', () => show()); hit.addEventListener('blur', tipHide);
+      svg.appendChild(hit);
+    });
+    return svg;
+  };
+}
+
+/* ---------- columnas agrupadas (un solo eje; series indexadas) ---------- */
+function groupedCols(cfg) {
+  const fmt = cfg.fmt || (v => nf(v, 0));
+  return (w) => {
+    const h = cfg.height || 224, pad = { t: 12, r: 8, b: 42, l: 46 };
+    const groups = cfg.groups, series = cfg.series;
+    const iw = Math.max(60, w - pad.l - pad.r), ih = h - pad.t - pad.b;
+    const all = series.flatMap(s => s.values);
+    const ticks = niceTicks(0, Math.max(...all) * 1.06, 4);
+    const y1 = ticks[ticks.length - 1];
+    const Y = v => pad.t + ih - v / y1 * ih;
+    const gw = iw / groups.length;
+    const bandW = Math.min(gw * .72, series.length * 26);
+    const bw = Math.min(24, (bandW - (series.length - 1) * 2) / series.length);
+    const svg = svgRoot(w, h);
+    ticks.forEach(t => {
+      svg.appendChild(gridLine(pad.l, pad.l + iw, Y(t)));
+      svg.appendChild(S('text', { x: pad.l - 8, y: Y(t) + 3.5, class: 'tick', 'text-anchor': 'end' }, fmt(t)));
+    });
+    if (cfg.refLine !== undefined) {
+      svg.appendChild(S('line', { x1: pad.l, x2: pad.l + iw, y1: Y(cfg.refLine), y2: Y(cfg.refLine), stroke: 'var(--axis)', 'stroke-width': 1 }));
+      svg.appendChild(S('text', { x: pad.l + 4, y: Y(cfg.refLine) - 5, class: 'tick', fill: 'var(--ink-2)' }, cfg.refLabel || ''));
+    }
+    groups.forEach((g, gi) => {
+      const cx = pad.l + gi * gw + gw / 2;
+      const x0 = cx - (bw * series.length + (series.length - 1) * 2) / 2;
+      series.forEach((s, si) => {
+        const v = s.values[gi], x = x0 + si * (bw + 2);
+        svg.appendChild(S('path', { d: roundTopPath(x, Y(v), bw, pad.t + ih - Y(v), 4), fill: s.color }));
+        const hit = S('rect', { x: x - 1, y: pad.t, width: bw + 2, height: ih, class: 'hit cellhit', tabindex: 0, 'aria-label': `${g}, ${s.name}: ${fmt(v)}` });
+        const show = ev => { const b = svg.getBoundingClientRect(); tipShow(ev?.clientX ?? b.left + x, ev?.clientY ?? b.top + Y(v), g, series.map(ss => ({ color: ss.color, value: fmt(ss.values[gi]), name: ss.name }))); };
+        hit.addEventListener('pointermove', show); hit.addEventListener('pointerleave', tipHide);
+        hit.addEventListener('focus', () => show()); hit.addEventListener('blur', tipHide);
+        svg.appendChild(hit);
+      });
+      g.split('\n').forEach((ln, k) => svg.appendChild(S('text', { x: cx, y: h - 26 + k * 13, class: 'tick', 'text-anchor': 'middle' }, ln)));
+    });
+    svg.appendChild(S('line', { x1: pad.l, x2: pad.l + iw, y1: pad.t + ih, y2: pad.t + ih, stroke: 'var(--axis)', 'stroke-width': 1 }));
+    return svg;
+  };
+}
+
+/* ---------- leyenda ---------- */
+function legend(items, kind = 'rect') {
+  const box = E('div', 'legend');
+  items.forEach(it => {
+    const s = E('span');
+    const i = E('i', it.kind || kind); i.style.background = it.color;
+    s.appendChild(i); s.appendChild(document.createTextNode(it.name));
+    box.appendChild(s);
+  });
+  return box;
+}
+/* ---------- tabla ---------- */
+function table(head, rows, foot) {
+  const wrap = E('div', 'tblwrap'), t = E('table'), th = E('thead'), tr = E('tr');
+  head.forEach(h => tr.appendChild(E('th', '', h))); th.appendChild(tr); t.appendChild(th);
+  const tb = E('tbody');
+  rows.forEach(r => {
+    const x = E('tr');
+    r.forEach(c => {
+      const td = E('td');
+      if (c instanceof Node) td.appendChild(c); else td.textContent = c;
+      x.appendChild(td);
+    });
+    tb.appendChild(x);
+  });
+  t.appendChild(tb);
+  if (foot) { const tf = E('tfoot'), fr = E('tr'); foot.forEach(c => { const td = E('td'); if (c instanceof Node) td.appendChild(c); else td.textContent = c; fr.appendChild(td); }); tf.appendChild(fr); t.appendChild(tf); }
+  wrap.appendChild(t); return wrap;
+}
+/* Barra + número: la barra da la comparación, el número da el valor exacto. */
+function meterCell(v, max, color, text) {
+  const d = E('div');
+  d.style.cssText = 'display:flex;align-items:center;gap:8px;justify-content:flex-end';
+  d.appendChild(meter(v, max, color));
+  const t = E('span', '', text);
+  t.style.cssText = 'font-variant-numeric:tabular-nums;min-width:44px;text-align:right';
+  d.appendChild(t);
+  return d;
+}
+function meter(v, max, color) {
+  const m = E('span', 'meter'), i = E('i');
+  i.style.width = clamp(v / max * 100, 0, 100) + '%'; if (color) i.style.background = color;
+  m.appendChild(i); return m;
+}
+function pill(text, kind) { const p = E('span', 'pill ' + kind, text); return p; }
+</script>
+
+<script>
+/* ==========================================================================
+   COMPONENTES DE TARJETA
+   ========================================================================== */
+let VARCACHE = {};
+function cssVar(v) {
+  if (!v || !v.startsWith('var(')) return v;
+  const name = v.slice(4, -1).trim();
+  if (VARCACHE[name]) return VARCACHE[name];
+  return VARCACHE[name] = getComputedStyle(document.documentElement).getPropertyValue(name).trim() || '#888';
+}
+function inkOn(color) {
+  const c = cssVar(color).match(/\d+(\.\d+)?/g);
+  if (!c) return '#fff';
+  const lum = [0, 1, 2].map(i => { const x = c[i] / 255; return x <= .04045 ? x / 12.92 : ((x + .055) / 1.055) ** 2.4; });
+  return (.2126 * lum[0] + .7152 * lum[1] + .0722 * lum[2]) > .42 ? '#191d15' : '#ffffff';
+}
+
+function card(span, cls = '') {
+  const c = E('div', `card ${span} ${cls}`.trim());
+  return c;
+}
+function head(el, title, sub, extra) {
+  const h = E('div', 'chead'), box = E('div');
+  box.appendChild(E('h3', '', title));
+  if (sub) box.appendChild(E('p', '', sub));
+  h.appendChild(box);
+  h.appendChild(E('div', 'spacer'));
+  if (extra) h.appendChild(extra);
+  el.appendChild(h);
+  return h;
+}
+/* Tarjeta de gráfica con gemela en tabla (todo valor accesible sin hover) */
+function plotCard(o) {
+  const c = card(o.span, 'plot');
+  let showing = 'chart';
+  const btn = E('button', 'mini', 'Tabla');
+  btn.type = 'button'; btn.setAttribute('aria-pressed', 'false');
+  head(c, o.title, o.sub, o.tableFn ? btn : o.extra);
+  if (o.legend) c.appendChild(o.legend);
+  const box = E('div', 'plotbox');
+  c.appendChild(box);
+  mount(box, o.draw);
+  if (o.note) { const n = E('p', '', o.note); n.style.cssText = 'margin:0;font-size:12px;color:var(--ink-3)'; c.appendChild(n); }
+  if (o.tableFn) {
+    btn.addEventListener('click', () => {
+      showing = showing === 'chart' ? 'table' : 'chart';
+      btn.setAttribute('aria-pressed', String(showing === 'table'));
+      btn.textContent = showing === 'table' ? 'Gráfica' : 'Tabla';
+      unmount(box);
+      box.textContent = '';
+      if (showing === 'table') box.appendChild(o.tableFn());
+      else mount(box, o.draw);
+    });
+  }
+  return c;
+}
+function kpiTile(o) {
+  const t = E('div', 'kpi');
+  t.appendChild(E('div', 'lbl', o.label));
+  const row = E('div', 'row');
+  row.appendChild(E('div', 'val', o.value));
+  if (o.spark) row.appendChild(o.spark);
+  t.appendChild(row);
+  if (o.delta !== undefined) {
+    const dir = o.delta > .3 ? 'up' : o.delta < -.3 ? 'down' : 'flat';
+    const good = o.inverse ? dir === 'down' : dir === 'up';
+    const d = E('div', 'delta ' + (dir === 'flat' ? 'flat' : good ? 'up' : 'down'));
+    d.appendChild(document.createTextNode((dir === 'up' ? '▲' : dir === 'down' ? '▼' : '■') + ' ' + signed(o.delta, 1) + ' %'));
+    const vs = E('span', 'vs', ' vs periodo anterior');
+    if (state.compare) d.appendChild(vs);
+    t.appendChild(d);
+  }
+  if (o.foot) t.appendChild(E('div', 'lbl', o.foot));
+  return t;
+}
+function readCard(title, items) {
+  const c = E('div', 'read c12');
+  c.appendChild(E('h4', '', title));
+  const ol = E('ol');
+  items.forEach(it => {
+    const li = E('li');
+    const s = E('strong', '', it.what); li.appendChild(s);
+    li.appendChild(document.createTextNode(' — ' + it.why + ' '));
+    if (it.why2) { const w = E('span', 'why', it.why2); li.appendChild(w); }
+    ol.appendChild(li);
+  });
+  c.appendChild(ol);
+  return c;
+}
+function eyebrow(text) {
+  const e = E('div', 'eyebrow c12');
+  e.appendChild(document.createTextNode(text));
+  e.appendChild(E('span', 'rule'));
+  return e;
+}
+
+/* ==========================================================================
+   DERIVADAS DE DATOS POR CORTE
+   ========================================================================== */
+const SECTIONS = [
+  { id: 'live', name: 'Resultados en directo', color: 'var(--s1)', base: .33 },
+  { id: 'match', name: 'Ficha de partido', color: 'var(--s2)', base: .23 },
+  { id: 'news', name: 'Noticias', color: 'var(--s3)', base: .16 },
+  { id: 'comp', name: 'Competiciones', color: 'var(--s4)', base: .12 },
+  { id: 'team', name: 'Equipos y plantillas', color: 'var(--s5)', base: .09 },
+  { id: 'tran', name: 'Fichajes y mercado', color: 'var(--s6)', base: .07 },
+];
+const PLATTILT = {
+  ios: { live: 1.06, match: 1.10, news: .88, comp: .96, team: 1.04, tran: 1.02 },
+  android: { live: 1.02, match: .98, news: 1.08, comp: 1.02, team: .98, tran: 1.00 },
+  web: { live: .78, match: .72, news: 1.62, comp: 1.28, team: .86, tran: 1.10 },
+  all: { live: 1, match: 1, news: 1, comp: 1, team: 1, tran: 1 },
+};
+function sectionMix(platId, extraKey = '') {
+  const tilt = PLATTILT[platId] || PLATTILT.all;
+  const segTilt = state.seg === 'new' ? { live: 1.12, match: .82, news: 1.14, comp: .88, team: .72, tran: .78 }
+    : state.seg === 'fan' ? { live: 1.06, match: 1.18, news: .96, comp: .94, team: 1.34, tran: 1.22 }
+      : state.seg === 'premium' ? { live: 1.02, match: 1.26, news: .82, comp: 1.06, team: 1.12, tran: 1.30 } : {};
+  const r = rng(key('mix' + platId + extraKey));
+  const raw = SECTIONS.map(s => s.base * (tilt[s.id] || 1) * (segTilt[s.id] || 1) * (1 + (r() - .5) * .06));
+  const sum = raw.reduce((a, b) => a + b, 0);
+  const sess = activeBase() * metric('spu') * (platId === 'all' ? 1 : PLATS[platId].share / (PLATS[state.plat].share || 1));
+  return SECTIONS.map((s, i) => ({ ...s, share: raw[i] / sum, sessions: Math.round(raw[i] / sum * sess) }));
+}
+const SCREENS = [
+  { name: 'Directo · marcadores del día', s: 'live', views: .215, exit: 21.4, tt: 46.2 },
+  { name: 'Partido · minuto a minuto', s: 'match', views: .142, exit: 18.2, tt: 51.8 },
+  { name: 'Partido · alineaciones', s: 'match', views: .086, exit: 26.8, tt: 38.4 },
+  { name: 'Noticia · artículo', s: 'news', views: .118, exit: 58.1, tt: 12.6 },
+  { name: 'Competición · clasificación', s: 'comp', views: .094, exit: 32.4, tt: 27.9 },
+  { name: 'Equipo · plantilla', s: 'team', views: .062, exit: 34.9, tt: 24.1 },
+  { name: 'Mercado · rumores', s: 'tran', views: .058, exit: 41.2, tt: 19.8 },
+  { name: 'Buscador', s: 'live', views: .047, exit: 12.1, tt: 74.6 },
+  { name: 'Mi BeSoccer · seguidos', s: 'team', views: .039, exit: 15.4, tt: 62.3 },
+  { name: 'Onboarding · elige equipo', s: 'team', views: .022, exit: 44.6, tt: 55.1 },
+];
+function screenRows() {
+  const r = rng(key('screens'));
+  const views = activeBase() * metric('spu') * 4.6 * state.range; // pantallas vistas en todo el periodo
+  return SCREENS.map(s => {
+    const j = 1 + (r() - .5) * .12;
+    return { ...s, v: Math.round(views * s.views * j), exitv: clamp(s.exit * (1 + (r() - .5) * .12), 3, 88), ttv: clamp(s.tt * (1 + (r() - .5) * .1), 2, 96) };
+  }).sort((a, b) => b.v - a.v);
+}
+const FEATURES = [
+  { name: 'Seguir un equipo', a: 41.2, b: 52.8 },
+  { name: 'Notificaciones de gol', a: 33.6, b: 46.1 },
+  { name: 'Widget de resultados', a: 8.4, b: 14.2 },
+  { name: 'Comentarios del partido', a: 11.9, b: 13.1 },
+  { name: 'Quinielas / predicciones', a: 6.2, b: 9.8 },
+  { name: 'Modo TV / segunda pantalla', a: 3.1, b: 3.4 },
+];
+function featureRows() {
+  const r = rng(key('feat')), m = PLATS[state.plat], s = SEGS[state.seg];
+  return FEATURES.map(f => ({
+    label: f.name,
+    a: clamp(f.a * m.d7 * s.d7 * (1 + (r() - .5) * .08), .5, 99),
+    b: clamp(f.b * m.d7 * s.d7 * (1 + (r() - .5) * .08), .5, 99),
+  }));
+}
+function cohorts() {
+  const cols = ['D0', 'D1', 'D3', 'D7', 'D14', 'D30'];
+  const shape = [null, 1.45, 1.19, 1, .74, .55]; // relativo a D7 = 1
+  const r = rng(key('cohort'));
+  const rows = [];
+  for (let i = 7; i >= 0; i--) {
+    const d = new Date(TODAY); d.setDate(d.getDate() - i * 7 - 6);
+    const base = metric('d7') * (1 + (7 - i) * .012) * (1 + (r() - .5) * .07);
+    rows.push({
+      label: 'Sem. ' + dayLabel(d),
+      values: cols.map((c, k) => k === 0 ? 100
+        : +clamp(base * shape[k] * (1 + (r() - .5) * .05), 1.5, 99).toFixed(1))
+    });
+  }
+  return { cols, rows };
+}
+function retentionCurves() {
+  const days = [0, 1, 3, 7, 14, 21, 30, 45, 60];
+  const plats = state.plat === 'all' ? ['ios', 'android', 'web'] : [state.plat];
+  const colors = { ios: 'var(--s1)', android: 'var(--s2)', web: 'var(--s3)' };
+  return {
+    x: days.map(d => 'D' + d),
+    series: plats.map((p, i) => {
+      const r = rng(key('ret' + p));
+      const d7 = clamp(BASE.d7 * PLATS[p].d7 * SEGS[state.seg].d7, 4, 92);
+      return {
+        name: PLATS[p].name, color: colors[p] || 'var(--s1)', emph: i === 0,
+        values: days.map(d => d === 0 ? 100 : +clamp(d7 * Math.pow(d / 7, -0.34) * (1 + (r() - .5) * .04), 1.5, 100).toFixed(1))
+      };
+    })
+  };
+}
+function funnelActivation() {
+  const dau = activeBase(), r = rng(key('funA'));
+  const steps = [
+    { label: 'Abre la app', k: 1, hint: 'sesión iniciada' },
+    { label: 'Llega a resultados en directo', k: .93 },
+    { label: 'Abre la ficha de un partido', k: .61 },
+    { label: 'Sigue el partido > 2 min', k: .38 },
+    { label: 'Activa notificación o sigue equipo', k: .14, hint: 'evento de activación' },
+  ];
+  return steps.map(s => ({ label: s.label, hint: s.hint, value: Math.round(dau * s.k * (1 + (r() - .5) * .04)) }));
+}
+/* Usuarios únicos alcanzados en el periodo (no la media diaria). */
+function reach() { return activeBase() * (1 + Math.log2(state.range) / 3.2); }
+/* Todos los pasos son fracciones del alcance del periodo, de modo que
+   los porcentajes del embudo y los KPI derivados hablan de la misma base. */
+function funnelPremium() {
+  const r = rng(key('funP')), R = reach();
+  const pm = PLATS[state.plat].prem * SEGS[state.seg].prem;
+  const j = () => 1 + (r() - .5) * .04;
+  const steps = [
+    { label: 'Ve el muro sin publicidad / Premium', short: 'muro', k: .1860, pay: false },
+    { label: 'Abre la pantalla de planes', short: 'planes', k: .0149, pay: false },
+    { label: 'Inicia el pago', short: 'inicia el pago', k: .0052, pay: true },
+    { label: 'Completa la suscripción', short: 'suscripción', k: .00287, pay: true, hint: 'suscripción nueva' },
+    { label: 'Renueva al segundo mes', short: 'renovación', k: .00221, pay: true },
+  ];
+  return steps.map(st => ({ label: st.label, short: st.short, hint: st.hint, value: Math.round(R * st.k * (st.pay ? pm : 1) * j()) }));
+}
+const EXPERIMENTS = [
+  { name: 'Onboarding: elegir equipo antes del registro', metric: 'Activación D1', uplift: 8.4, conf: 98, days: 21, state: 'Ganadora' },
+  { name: 'Pedir permiso de notificaciones tras el primer gol', metric: 'Opt-in notificaciones', uplift: 14.7, conf: 99, days: 18, state: 'Ganadora' },
+  { name: 'Muro Premium contextual en partido en directo', metric: 'Conversión Premium', uplift: 3.1, conf: 72, days: 12, state: 'En curso' },
+  { name: 'Directo: marcador compacto por defecto', metric: 'Sesiones / usuario', uplift: -1.9, conf: 88, days: 24, state: 'Perdedora' },
+  { name: 'Noticias: recirculación al final del artículo', metric: 'Pantallas / sesión', uplift: 6.2, conf: 94, days: 15, state: 'Ganadora' },
+  { name: 'Widget de resultados en onboarding iOS', metric: 'Retención D7', uplift: 0.8, conf: 41, days: 9, state: 'En curso' },
+];
+const CRO = [
+  { name: 'Reordenar el muro Premium al descanso del partido', area: 'Monetización', impact: 5, ease: 4, conf: 4, note: 'El 62 % del tiempo Premium-elegible ocurre en directo' },
+  { name: 'Pedir notificaciones tras el primer gol seguido', area: 'Activación', impact: 5, ease: 5, conf: 5, note: 'Validado en test: +14,7 % opt-in' },
+  { name: 'Onboarding con equipo preseleccionado por geo/idioma', area: 'Activación', impact: 4, ease: 3, conf: 4, note: 'Seguir equipo multiplica ×1,5 la retención D7' },
+  { name: 'Traducir reviews y respuestas en AR e ID', area: 'Rating', impact: 4, ease: 4, conf: 3, note: 'Los dos mercados con peor rating y más crecimiento' },
+  { name: 'Reducir salida en la pantalla de artículo (58 %)', area: 'Engagement', impact: 4, ease: 3, conf: 3, note: 'Recirculación probada: +6,2 % pantallas/sesión' },
+  { name: 'Widget nativo en Android con partido en vivo', area: 'Retención', impact: 3, ease: 2, conf: 3, note: 'Adopción del widget aún en el 14 %' },
+];
+const THEMES = [
+  { theme: 'Publicidad intrusiva', vol: 28.4, sent: -1, langs: 'ES · PT · AR' },
+  { theme: 'Retraso en los datos del directo', vol: 19.1, sent: -1, langs: 'AR · ID · EN' },
+  { theme: 'Cobertura de ligas locales', vol: 14.6, sent: -1, langs: 'ID · TR · AR' },
+  { theme: 'Velocidad y fiabilidad de la app', vol: 12.2, sent: 0, langs: 'Todos' },
+  { theme: 'Notificaciones de gol', vol: 10.8, sent: 1, langs: 'ES · IT · PT' },
+  { theme: 'Cantidad de datos y estadísticas', vol: 9.4, sent: 1, langs: 'ES · EN · DE' },
+  { theme: 'Traducción incompleta de la interfaz', vol: 5.5, sent: -1, langs: 'AR · ID · TR' },
+];
+function segmentIndex() {
+  const segs = ['new', 'ret', 'fan', 'premium'];
+  const metrics = ['Sesiones\npor usuario', 'Minutos\npor día', 'Retención\nD7', 'Conversión\nPremium'];
+  const colors = ['var(--s1)', 'var(--s2)', 'var(--s3)', 'var(--s4)'];
+  return {
+    groups: metrics,
+    series: segs.map((s, i) => {
+      const S_ = SEGS[s], r = rng(key('segi' + s));
+      const j = () => 1 + (r() - .5) * .04;
+      return {
+        name: S_.name, color: colors[i],
+        values: [S_.spu * 100 * j(), S_.len * 100 * j(), S_.d7 * 100 * j(), S_.prem * 100 * j()].map(v => Math.round(v))
+      };
+    })
+  };
+}
+</script>
+
+<script>
+/* ==========================================================================
+   PESTAÑA 1 · RESUMEN
+   ========================================================================== */
+const DAYS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+function hourDay() {
+  const r = rng(key('hd'));
+  const curve = [22, 12, 7, 5, 4, 6, 14, 34, 52, 58, 60, 63, 68, 66, 64, 66, 72, 78, 84, 92, 100, 98, 74, 44];
+  const peaks = { 0: [21, 22], 1: [19, 21, 22], 2: [19, 21, 22], 3: [21, 22], 4: [21, 22], 5: [14, 16, 18, 20, 22], 6: [12, 14, 16, 18, 20, 21] };
+  const perHour = activeBase() * metric('spu') / 24;
+  return {
+    cols: Array.from({ length: 24 }, (_, h) => String(h).padStart(2, '0')),
+    rows: DAYS.map((d, di) => ({
+      label: d,
+      values: curve.map((c, h) => {
+        const boost = (peaks[di] || []).includes(h) ? 1.42 : 1;
+        const wknd = di >= 5 ? 1.12 : 1;
+        return Math.round(perHour * (c / 100) * boost * wknd * (1 + (r() - .5) * .1));
+      })
+    }))
+  };
+}
+function renderResumen(root) {
+  const g = E('div', 'grid');
+  const dau = deltaOf('dau'), spu = deltaOf('spu'), len = deltaOf('len'), d7 = deltaOf('d7'), notif = deltaOf('notif');
+  const s = mods();
+
+  /* --- héroe (una sola cifra grande en toda la vista) --- */
+  const hero = card('c4');
+  const hb = E('div', 'hero');
+  const left = E('div');
+  left.appendChild(E('div', 'lbl', 'Usuarios activos diarios · media del periodo'));
+  left.appendChild(E('div', 'fig', compact(Math.round(dau.cur))));
+  const dl = E('div', 'delta ' + (dau.pct >= 0 ? 'up' : 'down'));
+  dl.textContent = (dau.pct >= 0 ? '▲ ' : '▼ ') + signed(dau.pct, 1) + ' %';
+  if (state.compare) { const v = E('span', 'vs', ' vs ' + PREV[state.range]); dl.appendChild(v); }
+  left.appendChild(dl);
+  hb.appendChild(left);
+  const side = E('div', 'side');
+  side.appendChild(E('div', '', `${PLATS[state.plat].name} · ${MKT[state.market].lang} · ${SEGS[state.seg].name}`));
+  const sticky = metric('stick');
+  const sm = E('div'); sm.style.marginTop = '8px';
+  sm.appendChild(E('div', '', 'Adherencia DAU / MAU'));
+  const mt = meter(sticky, 45, 'var(--q5)'); mt.style.margin = '5px 0 3px'; sm.appendChild(mt);
+  sm.appendChild(E('div', '', pct(sticky, 1) + ' · objetivo 30 %'));
+  side.appendChild(sm);
+  hb.appendChild(side);
+  hero.appendChild(hb);
+  g.appendChild(hero);
+
+  /* --- fila de KPI --- */
+  const kc = card('c8');
+  const inner = E('div');
+  inner.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:16px';
+  const tail = a => a.slice(-12);
+  [
+    { label: 'Sesiones por usuario', value: nf(spu.cur, 2), delta: (spu.cur - spu.prev) / spu.prev * 100, spark: sparkline(tail(series('spu').v), 'var(--s1)') },
+    { label: 'Tiempo por sesión', value: dur(len.cur), delta: (len.cur - len.prev) / len.prev * 100, spark: sparkline(tail(series('len').v), 'var(--s1)') },
+    { label: 'Retención D7', value: pct(d7.cur, 1), delta: (d7.cur - d7.prev) / d7.prev * 100, spark: sparkline(tail(series('d7').v), 'var(--s1)') },
+    { label: 'Opt-in notificaciones', value: pct(notif.cur, 1), delta: (notif.cur - notif.prev) / notif.prev * 100, spark: sparkline(tail(series('notif').v), 'var(--s1)') },
+  ].forEach(o => inner.appendChild(kpiTile(o)));
+  kc.appendChild(inner);
+  g.appendChild(kc);
+
+  /* --- serie temporal de DAU con comparativa --- */
+  const cur = series('dau'), prev = series('dau', { offset: state.range });
+  const ser = [{ name: RANGES[state.range], color: 'var(--s1)', values: cur.v, emph: true }];
+  if (state.compare) ser.push({ name: 'Periodo anterior', color: 'var(--deemph)', values: prev.v, emph: false });
+  g.appendChild(plotCard({
+    span: 'c8', title: 'Usuarios activos por ' + cur.step,
+    sub: 'La demanda de BeSoccer la marca el calendario: los picos caen en jornada de liga y noches europeas.',
+    legend: legend(ser.map(s => ({ color: s.color, name: s.name })), 'line'),
+    draw: lineChart({ x: cur.x, series: ser, bands: cur.bands, fmt: compact, height: 232, step: cur.step, aria: 'Usuarios activos por ' + cur.step }),
+    note: cur.bands.length ? 'Banda sombreada: sábado y domingo de jornada.' : 'Puntos semanales: cada valor es la media de la semana.',
+    tableFn: () => table(
+      [cur.step === 'semana' ? 'Semana' : 'Día', 'Periodo actual', 'Periodo anterior', 'Dif.'],
+      cur.x.map((x, i) => {
+        const a = cur.v[i], b = prev.v[i];
+        return [x.replace('sem. ', ''), NF.format(a), NF.format(b), signed((a - b) / b * 100, 1) + ' %'];
+      })
+    )
+  }));
+
+  /* --- reparto por sección --- */
+  const platRows = state.plat === 'all' ? ['ios', 'android', 'web'] : [state.plat];
+  const mixRows = platRows.map(p => {
+    const mix = sectionMix(p);
+    return { label: PLATS[p].name, values: Object.fromEntries(mix.map(m => [m.id, m.sessions])) };
+  });
+  const keys = SECTIONS.map(s => ({ id: s.id, name: s.name, color: s.color, ink: inkOn(s.color) }));
+  g.appendChild(plotCard({
+    span: 'c4', title: 'Reparto de sesiones por sección',
+    sub: 'Dónde se va el tiempo dentro de la app, por plataforma.',
+    legend: legend(keys.map(k => ({ color: k.color, name: k.name }))),
+    draw: stackedRows({ rows: mixRows, keys, unit: 'sesiones al día' }),
+    tableFn: () => table(['Sección'].concat(mixRows.map(r => r.label)),
+      SECTIONS.map(s => [s.name].concat(mixRows.map(r => {
+        const tot = SECTIONS.reduce((a, k) => a + r.values[k.id], 0);
+        return pct(r.values[s.id] / tot * 100, 1);
+      }))))
+  }));
+
+  /* --- mapa de calor hora × día --- */
+  const hd = hourDay();
+  const flat = hd.rows.flatMap(r => r.values);
+  g.appendChild(plotCard({
+    span: 'c8', title: 'Sesiones por hora y día de la semana',
+    sub: 'Media del periodo. El pico de las 21 h es el kick-off; el sábado y el domingo se aplana en toda la tarde.',
+    legend: scaleLegend(Math.min(...flat), Math.max(...flat), compact),
+    draw: heatmap({ cols: hd.cols, rows: hd.rows, rowH: 24, labelW: 84, unit: 'sesiones', fmt: compact }),
+    tableFn: () => table(['Día'].concat(hd.cols.map(c => c + ' h')), hd.rows.map(r => [r.label].concat(r.values.map(compact))))
+  }));
+
+  /* --- top pantallas --- */
+  const sc = screenRows().slice(0, 7);
+  g.appendChild(plotCard({
+    span: 'c4', title: 'Pantallas más vistas',
+    sub: 'Vistas en el periodo, todas las plataformas del corte.',
+    draw: barsH({ rows: sc.map(s => ({ label: s.name.length > 26 ? s.name.slice(0, 25) + '…' : s.name, value: s.v })), color: 'var(--s1)', fmt: compact, labelW: 170, valW: 62, unit: 'vistas' }),
+    tableFn: () => table(['Pantalla', 'Vistas', 'Salida', 'Avance'], sc.map(s => [s.name, compact(s.v), pct(s.exitv, 1), pct(s.ttv, 1)]))
+  }));
+
+  g.appendChild(eyebrow('Lectura de producto'));
+  g.appendChild(readCard('Qué haría esta semana', [
+    { what: 'Trasladar el muro Premium al descanso del partido en directo', why: 'el 62 % del tiempo elegible ocurre en la ficha de partido, pero el muro se muestra sobre todo en noticias.', why2: 'Impacto esperado: +0,3 pp de conversión.' },
+    { what: 'Pedir el permiso de notificaciones después del primer gol seguido', why: 'el test lleva +14,7 % de opt-in con 99 % de confianza y sigue sin desplegarse al 100 %.' },
+    { what: 'Atacar la salida del 58 % en la pantalla de artículo', why: 'es la única pantalla del top 5 con salida por encima del 40 %; la recirculación probada dio +6,2 % pantallas por sesión.' },
+    { what: 'Aprovechar la ventana 20-23 h para lanzamientos y campañas', why: 'concentra el 34 % de las sesiones del día; cualquier despliegue arriesgado debería salir fuera de esa franja.' },
+  ]));
+  root.appendChild(g);
+}
+
+/* ==========================================================================
+   PESTAÑA 2 · COMPORTAMIENTO
+   ========================================================================== */
+function renderUso(root) {
+  const g = E('div', 'grid');
+  const base = series('dau');
+  const mix = sectionMix(state.plat);
+  const top4 = mix.slice(0, 4);
+  const secSeries = top4.map((s, i) => {
+    const r = rng(key('sec' + s.id));
+    return {
+      name: s.name, color: s.color, emph: i === 0,
+      values: base.v.map((v, k) => Math.round(v * metric('spu') * s.share * (1 + (r() - .5) * .06) * (1 + (k / base.v.length) * (i === 3 ? .18 : i === 2 ? -.08 : .03))))
+    };
+  });
+  g.appendChild(plotCard({
+    span: 'c8', title: 'Sesiones por sección a lo largo del periodo',
+    sub: 'Cuatro secciones principales del corte activo. Un solo eje: todas las series son sesiones.',
+    legend: legend(secSeries.map(s => ({ color: s.color, name: s.name })), 'line'),
+    draw: lineChart({ x: base.x, series: secSeries, bands: base.bands, fmt: compact, height: 250, step: base.step, padR: 74, aria: 'Sesiones por sección' }),
+    tableFn: () => table([base.step === 'semana' ? 'Semana' : 'Día'].concat(secSeries.map(s => s.name)),
+      base.x.map((x, i) => [x.replace('sem. ', '')].concat(secSeries.map(s => compact(s.values[i])))))
+  }));
+
+  const fr = featureRows();
+  g.appendChild(plotCard({
+    span: 'c4', title: 'Adopción de funciones',
+    sub: '% de usuarios activos que la usaron al menos una vez.',
+    legend: legend([{ color: 'var(--q3)', name: 'Hace 90 días' }, { color: 'var(--q6)', name: 'Hoy' }]),
+    draw: dumbbell({ rows: fr, aName: 'hace 90 días', bName: 'hoy', labelW: 150, fmt: v => nf(v, 0) + ' %' }),
+    tableFn: () => table(['Función', 'Hace 90 días', 'Hoy', 'Dif.'], fr.map(r => [r.label, pct(r.a, 1), pct(r.b, 1), signed(r.b - r.a, 1) + ' pp']))
+  }));
+
+  const fa = funnelActivation();
+  g.appendChild(plotCard({
+    span: 'c6', title: 'Profundidad de sesión',
+    sub: 'De abrir la app a un evento de activación, en un día medio del periodo.',
+    draw: funnel({ steps: fa }),
+    tableFn: () => table(['Paso', 'Usuarios', '% del inicio', 'Caída'], fa.map((s, i) => [s.label, NF.format(s.value), pct(s.value / fa[0].value * 100, 1), i ? pct((1 - s.value / fa[i - 1].value) * 100, 1) : '—']))
+  }));
+
+  const sr = screenRows();
+  const c = card('c6');
+  head(c, 'Pantallas: rendimiento detallado', 'Salida = sesiones que terminan aquí. Avance = usuarios que siguen a otra pantalla.');
+  c.appendChild(table(
+    ['Pantalla', 'Vistas', 'Salida', 'Avance', 'Estado'],
+    sr.map(s => [
+      s.name, compact(s.v), pct(s.exitv, 1), pct(s.ttv, 1),
+      s.exitv > 45 ? pill('▼ salida alta', 'crit') : s.ttv > 50 ? pill('▲ motor', 'good') : pill('■ normal', 'mute')
+    ]),
+    ['Total', compact(sr.reduce((a, b) => a + b.v, 0)), '', '', '']
+  ));
+  g.appendChild(c);
+
+  g.appendChild(eyebrow('Lectura de producto'));
+  g.appendChild(readCard('Dónde está el margen de mejora', [
+    { what: 'El salto de "abre la ficha de partido" a "sigue > 2 min" pierde el 38 %', why: 'es la caída mayor del recorrido y la que más correlaciona con retención D7.', why2: 'Hipótesis: el minuto a minuto tarda en cargar en redes lentas.' },
+    { what: 'El widget se queda en el 14 % de adopción', why: 'es la función con más recorrido: quien lo instala abre la app 1,8 veces más al día.' },
+    { what: 'Fichajes y mercado crece pero solo pesa un 7 % de las sesiones', why: 'candidato claro a más superficie en portada durante ventana de mercado.' },
+  ]));
+  root.appendChild(g);
+}
+</script>
+
+<script>
+/* ==========================================================================
+   PESTAÑA 3 · IDIOMAS & RATING
+   ========================================================================== */
+function langRows() {
+  const r = rng(key('lang'));
+  const pm = PLATS[state.plat].rating;
+  return MARKETS.filter(m => m.id !== 'all').map(m => ({
+    ...m,
+    rating: +clamp(m.rating * pm * (1 + (r() - .5) * .012), 1, 5).toFixed(2),
+    users: Math.round(activeBase() * m.share),
+    reviewsP: Math.round(m.reviews * (state.range / 90) * (1 + (r() - .5) * .1)),
+    onestar: +clamp((5 - m.rating) * 13.5 * (1 + (r() - .5) * .12), 1, 60).toFixed(1),
+  }));
+}
+function renderIdiomas(root) {
+  const g = E('div', 'grid');
+  const rows = langRows();
+  const wAvg = rows.reduce((a, m) => a + m.rating * m.share, 0) / rows.reduce((a, m) => a + m.share, 0);
+  const sel = state.market;
+
+  /* KPI */
+  const kc = card('c12');
+  const inner = E('div');
+  inner.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px';
+  const rat = deltaOf('rating');
+  const totRev = rows.reduce((a, m) => a + m.reviewsP, 0);
+  const worst = [...rows].sort((a, b) => a.rating - b.rating)[0];
+  const fastest = [...rows].sort((a, b) => b.growth - a.growth)[0];
+  [
+    { label: 'Rating medio ponderado', value: nf(wAvg, 2) + ' / 5', delta: (rat.cur - rat.prev) / rat.prev * 100, spark: sparkline(series('rating').v.slice(-12), 'var(--s1)') },
+    { label: 'Reseñas en el periodo', value: compact(totRev), foot: nf(totRev / state.range, 0) + ' al día' },
+    { label: 'Peor idioma', value: worst.code + ' · ' + nf(worst.rating, 2), foot: worst.lang + ' · ' + pct(worst.share * 100, 1) + ' de los usuarios' },
+    { label: 'Mercado que más crece', value: fastest.code + ' · ' + signed(fastest.growth, 1) + ' %', foot: fastest.lang + ' · rating ' + nf(fastest.rating, 2) },
+    { label: 'Reseñas de 1 estrella', value: pct(rows.reduce((a, m) => a + m.onestar * m.share, 0) / rows.reduce((a, m) => a + m.share, 0), 1), foot: 'sobre el total de reseñas', inverse: true, delta: -2.4 },
+  ].forEach(o => inner.appendChild(kpiTile(o)));
+  kc.appendChild(inner);
+  g.appendChild(kc);
+
+  /* rating por idioma — escala completa 0-5, sin truncar */
+  const sorted = [...rows].sort((a, b) => b.rating - a.rating);
+  g.appendChild(plotCard({
+    span: 'c5', title: 'Rating de tienda por idioma',
+    sub: sel === 'all' ? 'Escala completa 0–5 para no exagerar las diferencias; la comparación fina está en la tarjeta de al lado.'
+      : 'El idioma filtrado va en verde; el resto queda como contexto.',
+    draw: barsH({
+      rows: sorted.map(m => ({
+        label: m.lang + ' (' + m.code + ')', value: m.rating,
+        color: sel === 'all' || sel === m.id ? 'var(--s1)' : 'var(--deemph)',
+        note: compact(m.reviewsP) + ' reseñas'
+      })),
+      min: 0, max: 5, fmt: v => nf(v, 2), labelW: 138, valW: 46, rowH: 27, unit: 'de 5'
+    }),
+    tableFn: () => table(['Idioma', 'Rating', 'Reseñas', '% usuarios', '1★'],
+      sorted.map(m => [m.lang, nf(m.rating, 2), NF.format(m.reviewsP), pct(m.share * 100, 1), pct(m.onestar, 1)]))
+  }));
+
+  /* diferencia vs media — divergente, polos frío/cálido y cero gris */
+  g.appendChild(plotCard({
+    span: 'c4', title: 'Diferencia con la media global',
+    sub: 'Puntos de rating sobre o bajo la media ponderada (' + nf(wAvg, 2) + ').',
+    legend: legend([{ color: 'var(--div-pos)', name: 'Por encima' }, { color: 'var(--div-neg)', name: 'Por debajo' }]),
+    draw: diverging({
+      rows: [...rows].sort((a, b) => (b.rating - wAvg) - (a.rating - wAvg)).map(m => ({
+        label: m.lang, value: +(m.rating - wAvg).toFixed(2),
+        rows: [{ value: nf(m.rating, 2), name: 'rating' }, { value: pct(m.share * 100, 1), name: 'de usuarios' }]
+      })),
+      labelW: 96, valW: 74, unit: 'pts vs media'
+    }),
+    tableFn: () => table(['Idioma', 'Rating', 'Dif. vs media'],
+      rows.map(m => [m.lang, nf(m.rating, 2), signed(m.rating - wAvg, 2)]))
+  }));
+
+  /* evolución */
+  const base = series('rating');
+  const top = [...rows].sort((a, b) => b.share - a.share).slice(0, 4);
+  const cols = ['var(--s1)', 'var(--s2)', 'var(--s3)', 'var(--s4)'];
+  const evo = top.map((m, i) => {
+    const r = rng(key('evo' + m.id));
+    const drift = m.id === 'ar' || m.id === 'id' ? -.09 : .05;
+    return {
+      name: m.lang, color: cols[i], emph: i === 0,
+      values: base.v.map((_, k) => +clamp(m.rating - drift * (1 - k / base.v.length) + (r() - .5) * .03, 1, 5).toFixed(2))
+    };
+  });
+  g.appendChild(plotCard({
+    span: 'c7', title: 'Evolución del rating por idioma',
+    sub: 'Media móvil del rating recibido en cada ' + base.step + '.',
+    legend: legend(evo.map(s => ({ color: s.color, name: s.name })), 'line'),
+    draw: lineChart({ x: base.x, series: evo, bands: [], fmt: v => nf(v, 2), height: 226, step: base.step, padR: 62, aria: 'Evolución del rating por idioma' }),
+    tableFn: () => table([base.step === 'semana' ? 'Semana' : 'Día'].concat(evo.map(s => s.name)),
+      base.x.map((x, i) => [x.replace('sem. ', '')].concat(evo.map(s => nf(s.values[i], 2)))))
+  }));
+
+  /* temas de reseñas */
+  const c = card('c5');
+  head(c, 'De qué hablan las reseñas', 'Clasificación temática del periodo, con el sentimiento dominante.');
+  c.appendChild(table(['Tema', '% reseñas', 'Sentimiento', 'Idiomas más afectados'],
+    THEMES.map(t => [
+      t.theme,
+      meterCell(t.vol, 30, t.sent < 0 ? 'var(--q5)' : 'var(--q3)', nf(t.vol, 1) + ' %'),
+      t.sent < 0 ? pill('▼ negativo', 'crit') : t.sent > 0 ? pill('▲ positivo', 'good') : pill('■ mixto', 'mute'),
+      t.langs
+    ])));
+  const legendNote = E('p', '', 'La barra es el volumen relativo sobre el total de reseñas clasificadas.');
+  legendNote.style.cssText = 'margin:8px 0 0;font-size:12px;color:var(--ink-3)';
+  c.appendChild(legendNote);
+  g.appendChild(c);
+
+  g.appendChild(eyebrow('Lectura de producto'));
+  g.appendChild(readCard('El rating no es un problema global, es un problema de dos mercados', [
+    { what: 'Árabe e indonesio están 0,35 y 0,48 puntos por debajo de la media y son los dos mercados que más crecen', why: 'cada punto de rating cuesta conversión en tienda; aquí el coste se paga sobre la base que más sube.' },
+    { what: 'El 20 % de las reseñas negativas de esos idiomas habla de traducción incompleta y cobertura de ligas locales', why: 'son dos arreglos de producto acotados, no una percepción difusa de calidad.' },
+    { what: 'La publicidad intrusiva es el tema número uno en reseñas (28,4 %) y coincide con el mercado de mejor rating', why: 'antes de subir presión publicitaria conviene medir el efecto sobre el rating en ES y PT.' },
+    { what: 'Responder reseñas en el idioma original', why: 'los mercados donde ya se responde tienen 0,2 puntos más de rating medio.' },
+  ]));
+  root.appendChild(g);
+}
+
+/* ==========================================================================
+   PESTAÑA 4 · RETENCIÓN
+   ========================================================================== */
+const DRIVERS = [
+  { label: 'Sigue ≥ 1 equipo', a: 26.8, b: 48.2 },
+  { label: 'Notificaciones activas', a: 28.4, b: 46.9 },
+  { label: 'Vio un partido en directo', a: 24.1, b: 43.6 },
+  { label: 'Completó el onboarding', a: 22.6, b: 41.1 },
+  { label: 'Widget instalado', a: 33.2, b: 52.4 },
+  { label: 'Usó el buscador', a: 31.7, b: 38.9 },
+];
+function renderRetencion(root) {
+  const g = E('div', 'grid');
+  const co = cohorts();
+  const flat = co.rows.flatMap(r => r.values.slice(1));
+  g.appendChild(plotCard({
+    span: 'c7', title: 'Retención por cohorte semanal',
+    sub: '% de la cohorte que vuelve. Cada fila es la semana en la que el usuario instaló.',
+    legend: scaleLegend(Math.min(...flat), Math.max(...flat), v => nf(v, 0) + ' %'),
+    draw: heatmap({ cols: co.cols, rows: co.rows, rowH: 26, labelW: 92, showValues: true, neutralCols: [0], min: Math.min(...flat), max: Math.max(...flat), unit: 'de la cohorte', fmt: v => nf(v, 1) + ' %' }),
+    note: 'D0 = 100 % por definición y queda fuera de la escala de color.',
+    tableFn: () => table(['Cohorte'].concat(co.cols), co.rows.map(r => [r.label].concat(r.values.map(v => nf(v, 1) + ' %'))))
+  }));
+
+  const rc = retentionCurves();
+  g.appendChild(plotCard({
+    span: 'c5', title: 'Curva de retención por plataforma',
+    sub: 'Mismo eje para todas: % de usuarios activos el día N.',
+    legend: legend(rc.series.map(s => ({ color: s.color, name: s.name })), 'line'),
+    draw: lineChart({ x: rc.x, series: rc.series, bands: [], fmt: v => nf(v, 0) + ' %', height: 236, padR: 58, yMax: 100, yZero: true, aria: 'Curva de retención por plataforma' }),
+    tableFn: () => table(['Día'].concat(rc.series.map(s => s.name)),
+      rc.x.map((x, i) => [x].concat(rc.series.map(s => nf(s.values[i], 1) + ' %'))))
+  }));
+
+  const dr = DRIVERS.map(d => {
+    const r = rng(key('drv' + d.label)), k = SEGS[state.seg].d7 * PLATS[state.plat].d7;
+    return { label: d.label, a: clamp(d.a * k * (1 + (r() - .5) * .06), 1, 96), b: clamp(d.b * k * (1 + (r() - .5) * .06), 1, 98) };
+  });
+  g.appendChild(plotCard({
+    span: 'c6', title: 'Retención D7 según lo que hace el usuario',
+    sub: 'Comparación de retención entre quien no realiza la acción y quien sí. Es correlación, no causa probada.',
+    legend: legend([{ color: 'var(--q3)', name: 'No lo hace' }, { color: 'var(--q6)', name: 'Sí lo hace' }]),
+    draw: dumbbell({ rows: dr, aName: 'no lo hace', bName: 'sí lo hace', labelW: 168, fmt: v => nf(v, 0) + ' %' }),
+    tableFn: () => table(['Acción', 'No lo hace', 'Sí lo hace', 'Dif.'], dr.map(r => [r.label, pct(r.a, 1), pct(r.b, 1), signed(r.b - r.a, 1) + ' pp']))
+  }));
+
+  const c = card('c6');
+  head(c, 'Retención D7 por mercado', 'Ordenado por volumen de usuarios del corte activo.');
+  const lr = langRows();
+  c.appendChild(table(['Mercado', 'Usuarios', 'Retención D7', 'Rating', 'Riesgo'],
+    lr.map(m => {
+      const r = rng(key('retm' + m.id));
+      const d7 = clamp(metric('d7') * (0.86 + r() * .3), 4, 92);
+      return [m.lang, compact(m.users), pct(d7, 1), nf(m.rating, 2),
+        d7 < metric('d7') * .92 && m.growth > 8 ? pill('▼ fuga en crecimiento', 'crit') : d7 < metric('d7') * .95 ? pill('■ vigilar', 'warn') : pill('▲ sano', 'good')];
+    })));
+  g.appendChild(c);
+
+  g.appendChild(eyebrow('Lectura de producto'));
+  g.appendChild(readCard('La retención se decide en la primera sesión', [
+    { what: 'Seguir un equipo casi duplica la retención D7 (26,8 % → 48,2 %)', why: 'y solo el 52,8 % de los activos lo ha hecho: es la palanca con más recorrido de todo el panel.' },
+    { what: 'La caída D1 → D3 concentra la pérdida', why: 'las cohortes recientes mejoran en D7 pero no en D1: el problema es la primera vuelta, no el medio plazo.' },
+    { what: 'Web retiene un 34 % menos que iOS', why: 'tiene sentido por naturaleza del canal, pero justifica un prompt de instalación mejor situado tras ver un partido completo.' },
+  ]));
+  root.appendChild(g);
+}
+</script>
+
+<script>
+/* ==========================================================================
+   PESTAÑA 5 · EMBUDOS & CRO
+   ========================================================================== */
+function renderCro(root) {
+  const g = E('div', 'grid');
+  const fp = funnelPremium(), fa = funnelActivation();
+  /* La caída muro → planes es estructural (una impresión no es una intención):
+     el KPI mira la mayor pérdida ya dentro del checkout. */
+  const worstStep = fp.slice(2).map((st, i) => ({ drop: (1 - st.value / fp[i + 1].value) * 100, from: fp[i + 1].short, to: st.short }))
+    .sort((a, b) => b.drop - a.drop)[0];
+
+  const kc = card('c12');
+  const inner = E('div');
+  inner.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fit,minmax(158px,1fr));gap:16px';
+  const prem = deltaOf('prem');
+  const winners = EXPERIMENTS.filter(e => e.state === 'Ganadora').length;
+  [
+    { label: 'Usuarios Premium', value: pct(prem.cur, 2), foot: 'de la base activa del corte', delta: (prem.cur - prem.prev) / prem.prev * 100, spark: sparkline(series('prem').v.slice(-12), 'var(--s1)') },
+    { label: 'Del muro a la suscripción', value: pct(fp[3].value / fp[0].value * 100, 2), foot: 'de quien ve el muro, se suscribe' },
+    { label: 'Mayor caída del checkout', value: pct(worstStep.drop, 1), foot: 'de "' + worstStep.from + '" a "' + worstStep.to + '"' },
+    { label: 'Renovación al segundo mes', value: pct(fp[4].value / fp[3].value * 100, 1), foot: 'de las suscripciones nuevas' },
+    { label: 'Tests concluidos con victoria', value: winners + ' de ' + EXPERIMENTS.length, foot: 'últimos 90 días' },
+    { label: 'Activación D1', value: pct(fa[4].value / fa[0].value * 100, 1), foot: 'sigue equipo o activa notificaciones' },
+  ].forEach(o => inner.appendChild(kpiTile(o)));
+  kc.appendChild(inner);
+  g.appendChild(kc);
+
+  g.appendChild(plotCard({
+    span: 'c6', title: 'Embudo de suscripción Premium',
+    sub: 'Usuarios únicos alcanzados en el periodo. Los porcentajes son sobre quienes llegan a ver el muro.',
+    draw: funnel({ steps: fp }),
+    tableFn: () => table(['Paso', 'Usuarios', '% del inicio', 'Caída'], fp.map((s, i) => [s.label, NF.format(s.value), pct(s.value / fp[0].value * 100, 1), i ? pct((1 - s.value / fp[i - 1].value) * 100, 1) : '—']))
+  }));
+  g.appendChild(plotCard({
+    span: 'c6', title: 'Embudo de activación',
+    sub: 'El mismo recorrido que en Comportamiento (día medio), para comparar con el de pago.',
+    draw: funnel({ steps: fa }),
+    tableFn: () => table(['Paso', 'Usuarios', '% del inicio', 'Caída'], fa.map((s, i) => [s.label, NF.format(s.value), pct(s.value / fa[0].value * 100, 1), i ? pct((1 - s.value / fa[i - 1].value) * 100, 1) : '—']))
+  }));
+
+  const ce = card('c7');
+  head(ce, 'Experimentos A/B', 'Últimos 90 días. La confianza por debajo del 95 % no decide nada todavía.');
+  ce.appendChild(table(['Experimento', 'Métrica objetivo', 'Efecto', 'Confianza', 'Días', 'Estado'],
+    EXPERIMENTS.map(e => [
+      e.name, e.metric,
+      signed(e.uplift, 1) + ' %',
+      meterCell(e.conf, 100, e.conf >= 95 ? 'var(--q5)' : 'var(--q3)', e.conf + ' %'),
+      e.days,
+      e.state === 'Ganadora' ? pill('▲ ganadora', 'good') : e.state === 'Perdedora' ? pill('▼ perdedora', 'crit') : pill('■ en curso', 'warn')
+    ])));
+  const noteE = E('p', '', 'Efecto = variación relativa de la métrica objetivo frente al control. La marca de decisión está en el 95 % de confianza.');
+  noteE.style.cssText = 'margin:8px 0 0;font-size:12px;color:var(--ink-3)';
+  ce.appendChild(noteE);
+  g.appendChild(ce);
+
+  const cb = card('c5');
+  head(cb, 'Backlog CRO priorizado', 'ICE = impacto × facilidad × confianza, sobre 125.');
+  const scored = CRO.map(o => ({ ...o, ice: o.impact * o.ease * o.conf })).sort((a, b) => b.ice - a.ice);
+  cb.appendChild(table(['Oportunidad', 'Área', 'ICE'],
+    scored.map(o => {
+      const name = E('div');
+      name.appendChild(E('div', '', o.name));
+      const n = E('div', '', o.note); n.style.cssText = 'font-size:11.5px;color:var(--ink-3)';
+      name.appendChild(n);
+      return [name, o.area, meterCell(o.ice, 125, o.ice >= 75 ? 'var(--q5)' : 'var(--q3)', String(o.ice))];
+    })));
+  g.appendChild(cb);
+
+  g.appendChild(eyebrow('Lectura de producto'));
+  g.appendChild(readCard('El embudo de pago pierde donde se puede arreglar', [
+    { what: 'Solo 8 de cada 100 usuarios que ven el muro abren la pantalla de planes', why: 'el problema no es el precio todavía, es el momento y el mensaje del muro.', why2: 'Primera prueba: muro al descanso, con el partido ya en marcha.' },
+    { what: 'De "planes" a "inicia el pago" se cae el 65 %', why: 'aquí sí es pantalla de precios: precio local, periodo de prueba y número de planes son las tres hipótesis.' },
+    { what: 'Dos tests ganadores llevan semanas sin desplegar al 100 %', why: 'el coste de no desplegar es hoy mayor que el de cualquier test nuevo en la cola.' },
+    { what: 'Cerrar el test del marcador compacto', why: 'lleva 24 días con efecto negativo y 88 % de confianza; mantenerlo abierto solo resta sesiones.' },
+  ]));
+  root.appendChild(g);
+}
+
+/* ==========================================================================
+   PESTAÑA 6 · SEGMENTOS
+   ========================================================================== */
+function renderSegmentos(root) {
+  const g = E('div', 'grid');
+  const si = segmentIndex();
+  g.appendChild(plotCard({
+    span: 'c7', title: 'Segmentos comparados con la media',
+    sub: 'Todo indexado a 100 = media de todos los usuarios, para que las cuatro métricas compartan un solo eje.',
+    legend: legend(si.series.map(s => ({ color: s.color, name: s.name }))),
+    draw: groupedCols({ groups: si.groups, series: si.series, height: 268, refLine: 100, refLabel: 'media = 100', fmt: v => nf(v, 0) }),
+    tableFn: () => table(['Segmento'].concat(si.groups.map(g2 => g2.replace('\n', ' '))),
+      si.series.map(s => [s.name].concat(s.values.map(v => nf(v, 0)))))
+  }));
+
+  const c = card('c5');
+  head(c, 'Tamaño y valor de cada segmento', 'Sobre la base activa del corte. Los segmentos se solapan: un premium también es recurrente.');
+  const tot = activeBase();
+  const cut = SEGS[state.seg];
+  const spuAvg = deltaOf('spu').cur, d7Avg = deltaOf('d7').cur;
+  const spuBase = spuAvg / cut.spu, d7Base = d7Avg / cut.d7; // sin contar dos veces el filtro activo
+  c.appendChild(table(['Segmento', 'Usuarios', '% base', 'Sesiones/us.', 'Ret. D7'],
+    ['new', 'ret', 'fan', 'premium'].map(k => {
+      const s = SEGS[k], r = rng(key('segt' + k));
+      const j = 1 + (r() - .5) * .04;
+      return [s.name, compact(Math.round(tot * s.share)), pct(s.share * 100, 1), nf(spuBase * s.spu * j, 2), pct(clamp(d7Base * s.d7 * j, 3, 95), 1)];
+    }),
+    ['Base activa', compact(tot), '100,0 %', nf(spuAvg, 2), pct(d7Avg, 1)]));
+  g.appendChild(c);
+
+  const mixSeg = sectionMix(state.plat, 'seg');
+  g.appendChild(plotCard({
+    span: 'c6', title: 'Secciones que usa el segmento filtrado',
+    sub: 'Corte activo: ' + SEGS[state.seg].name + '. Cambia el filtro de segmento para comparar.',
+    draw: barsH({
+      rows: mixSeg.map(s => ({ label: s.name, value: +(s.share * 100).toFixed(1), color: s.color })),
+      max: Math.max(...mixSeg.map(s => s.share * 100)) * 1.1,
+      fmt: v => nf(v, 1) + ' %', labelW: 158, valW: 52, unit: 'de las sesiones'
+    }),
+    tableFn: () => table(['Sección', '% sesiones', 'Sesiones'], mixSeg.map(s => [s.name, pct(s.share * 100, 1), compact(s.sessions)]))
+  }));
+
+  const cf = card('c6');
+  head(cf, 'Cómo mover cada segmento', 'La acción siguiente por segmento, con la métrica que debería moverse.');
+  cf.appendChild(table(['Segmento', 'Acción siguiente', 'Métrica'],
+    [
+      ['Nuevos (<7 d)', 'Onboarding con equipo preseleccionado por idioma y geo', 'Activación D1'],
+      ['Recurrentes', 'Notificaciones de gol de los equipos seguidos', 'Sesiones por usuario'],
+      ['Con equipo seguido', 'Ficha de partido como pantalla de entrada en día de jornada', 'Minutos por día'],
+      ['Premium', 'Contenido exclusivo de mercado de fichajes', 'Renovación M2'],
+    ].map(r => r)));
+  g.appendChild(cf);
+
+  g.appendChild(eyebrow('Lectura de producto'));
+  g.appendChild(readCard('Un solo segmento explica casi todo el valor', [
+    { what: 'El usuario con equipo seguido es el eje: +42 % sesiones, +52 % retención D7, ×1,6 conversión', why: 'no hay que crear un segmento nuevo, hay que convertir a los nuevos en este.' },
+    { what: 'Los nuevos usan el directo igual que el resto pero apenas tocan equipos y plantillas', why: 'el onboarding no está conectando al usuario con su club, que es lo que retiene.' },
+    { what: 'Premium consume ficha de partido y fichajes muy por encima de la media', why: 'ahí está el contenido diferencial que justifica la suscripción.' },
+  ]));
+  root.appendChild(g);
+}
+
+/* ==========================================================================
+   ENRUTADO, FILTROS Y ARRANQUE
+   ========================================================================== */
+const RENDERERS = { resumen: renderResumen, uso: renderUso, idiomas: renderIdiomas, retencion: renderRetencion, cro: renderCro, segmentos: renderSegmentos };
+const PANELS = { resumen: '#p-resumen', uso: '#p-uso', idiomas: '#p-idiomas', retencion: '#p-retencion', cro: '#p-cro', segmentos: '#p-segmentos' };
+
+function renderActive() {
+  const panel = $(PANELS[state.tab]);
+  VARCACHE = {};
+  /* la recarga mantiene el marco: sin esqueleto ni salto de layout */
+  const old = panel.firstChild;
+  if (old) old.classList.add('stale');
+  const draw = () => {
+    panel.textContent = '';
+    RENDERERS[state.tab](panel);
+    $('#stamp').textContent = 'Datos sintéticos · corte: ' + RANGES[state.range] + ' · actualizado ' + dayLabel(TODAY) + ' 09:20';
+  };
+  if (old) setTimeout(draw, 16); else draw();  /* setTimeout y no rAF: la pestaña oculta también repinta */
+}
+function selectTab(id, focus) {
+  state.tab = id;
+  $$('.tab').forEach(t => {
+    const on = t.dataset.tab === id;
+    t.setAttribute('aria-selected', String(on));
+    t.tabIndex = on ? 0 : -1;
+    $(PANELS[t.dataset.tab]).hidden = !on;
+    if (on && focus) t.focus();
+  });
+  $$('section[role="tabpanel"]').forEach(p => { if (!p.hidden && !p.firstChild) { } });
+  tipHide();
+  renderActive();
+}
+$$('.tab').forEach((t, i, arr) => {
+  t.addEventListener('click', () => selectTab(t.dataset.tab));
+  t.addEventListener('keydown', ev => {
+    const d = ev.key === 'ArrowRight' ? 1 : ev.key === 'ArrowLeft' ? -1 : ev.key === 'Home' ? -i : ev.key === 'End' ? arr.length - 1 - i : 0;
+    if (!d) return;
+    ev.preventDefault();
+    selectTab(arr[(i + d + arr.length) % arr.length].dataset.tab, true);
+  });
+});
+
+/* filtros */
+function paintSeg(id, val) {
+  $$('#' + id + ' button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === String(val))));
+}
+$('#f-range').addEventListener('click', ev => {
+  const b = ev.target.closest('button'); if (!b) return;
+  state.range = +b.dataset.v; paintSeg('f-range', state.range); renderActive();
+});
+$('#f-plat').addEventListener('click', ev => {
+  const b = ev.target.closest('button'); if (!b) return;
+  state.plat = b.dataset.v; paintSeg('f-plat', state.plat); renderActive();
+});
+const mktSel = $('#f-market');
+MARKETS.forEach(m => {
+  const o = document.createElement('option');
+  o.value = m.id;
+  o.textContent = m.id === 'all' ? m.lang : `${m.lang} (${m.code}) · ${nf(m.share * 100, 1)} %`;
+  mktSel.appendChild(o);
+});
+mktSel.addEventListener('change', () => { state.market = mktSel.value; renderActive(); });
+$('#f-seg').addEventListener('change', ev => { state.seg = ev.target.value; renderActive(); });
+$('#f-compare').addEventListener('change', ev => { state.compare = ev.target.checked; renderActive(); });
+$('#f-reset').addEventListener('click', () => {
+  Object.assign(state, { range: 30, plat: 'all', market: 'all', seg: 'all', compare: true });
+  paintSeg('f-range', 30); paintSeg('f-plat', 'all');
+  mktSel.value = 'all'; $('#f-seg').value = 'all'; $('#f-compare').checked = true;
+  renderActive();
+});
+
+/* tema */
+$('#theme').addEventListener('click', () => {
+  const cur = document.documentElement.getAttribute('data-theme');
+  const dark = cur ? cur === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+  document.documentElement.setAttribute('data-theme', dark ? 'light' : 'dark');
+  VARCACHE = {};
+  renderActive();
+});
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { VARCACHE = {}; renderActive(); });
+
+$('#expcount').textContent = EXPERIMENTS.filter(e => e.state === 'En curso').length + ' en curso';
+$('#foot').textContent = 'BeSoccer Product Lab · v0.1 · Todas las cifras son sintéticas y deterministas: sirven para validar el diseño del panel, no para tomar decisiones. Design system BeSoccer: verde #3B811F, Asap Condensed. Paleta de series validada para daltonismo (protan/deutan).';
+
+paintSeg('f-range', state.range);
+paintSeg('f-plat', state.plat);
+selectTab('resumen');
+</script>
