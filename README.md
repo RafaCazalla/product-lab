@@ -1,38 +1,102 @@
 # BeSoccer Product Lab
 
-Panel de analítica de producto de BeSoccer: uso de la app, rating por idioma, retención,
-embudos y CRO, y segmentos. Una sola página, sin build ni dependencias.
+Panel interno de la **voz del usuario en Google Play**: la nota que pone la gente y lo
+que escribe. Orientado a decisiones de producto y CRO.
 
-- **Ver el panel:** `open index.html`
-- **Probar en móvil:** `python3 -m http.server 8000` y abre `http://localhost:8000`
-- **Versión publicada (privada):** https://claude.ai/code/artifact/0c86327e-8e32-4740-bdd7-6633ebe37da6
+Una sola página autónoma: **sin build, sin dependencias y sin servidor**. `open index.html`
+y ya. Las gráficas son SVG escrito a mano.
 
-Los datos de esta versión son **sintéticos y deterministas**: cada combinación de filtros
-devuelve siempre las mismas cifras y las tarjetas cuadran entre sí. Sirven para validar el
-diseño del panel, no para tomar decisiones.
 
-## Continuar en Claude Code
+## Qué trae
 
-```bash
-cd ~/Claude/besoccer-product-lab
-claude
-```
-
-`CLAUDE.md` se carga solo al arrancar: contiene el design system, las reglas de gráficas y
-el mapa del código. No hace falta `/init`.
-
-Si quieres historial de cambios (recomendado antes de tocar nada):
-
-```bash
-git add -A && git commit -m "BeSoccer Product Lab v0.1"
-```
-
-## Estructura
-
-| Ruta | Qué es |
+| Pestaña | Qué contesta |
 |---|---|
-| `index.html` | La aplicación completa: tokens, modelo de datos, primitivas SVG, vistas |
-| `tools/validate_palette.py` | Valida la paleta de series (daltonismo, contraste, luminosidad) |
-| `tools/oklch.py` | Genera colores en OKLCH dentro de gama sRGB |
-| `docs/roadmap.md` | Lo siguiente, por orden de valor |
-| `CLAUDE.md` | Instrucciones del proyecto para Claude Code |
+| **Resumen** | Portada: las dos secciones resumidas. |
+| **Rating** | Reparto de la nota, idioma, versión, familia de dispositivo, evolución mensual y calidad de la muestra. |
+| **Reviews** | Embudo de la voz, temas con el signo de la nota, sentimiento del texto y los verbatims en crudo. |
+
+- **Interfaz en español e inglés**, con el español como original.
+- **Tema oscuro por defecto**, claro a un clic.
+- **Módulos reordenables** por arrastre o con el teclado; la posición se guarda.
+- **Lectura de IA bajo demanda**: el panel no interpreta por su cuenta. Todo lo que se ve
+  sin pulsar nada es aritmética; la interpretación la escribe Claude solo al pulsar
+  «Ejecutar contexto», y siempre sobre el brief de datos del corte activo.
+
+## Este repositorio no lleva datos
+
+`index.html` se publica aquí con el **esqueleto de datos vacío**: el texto de las reviews
+es de usuarios reales y no se publica. La página arranca y enseña su estado vacío.
+
+Para hidratarlo con un export de la consola de Google Play:
+
+```bash
+python3 tools/reviews_build.py mi_export.csv -o data/reviews.json --inline index.html
+```
+
+El CSV debe traer estas columnas: `id`, `package_name`, `app_version_code`, `app_version`,
+`language`, `device`, `date`, `rating`, `text`, `developer_reply_date`,
+`developer_reply_text`, `review_link`, `took_date`.
+
+Para volver al esqueleto vacío antes de commitear:
+
+```bash
+python3 tools/reviews_build.py --empty --inline index.html
+```
+
+Y para que no se te olvide, hay un hook que **rechaza** el commit si `index.html` lleva
+reviews dentro (no reescribe nada, solo avisa):
+
+```bash
+ln -sf ../../tools/pre-commit .git/hooks/pre-commit
+```
+
+## Herramientas
+
+```
+tools/reviews_build.py     CSV de Play -> JSON clasificado (tema y sentimiento con un
+                           léxico multiidioma reproducible, no con un modelo)
+tools/smoke.js             prueba de humo: renderiza las vistas bajo ~2.700 cortes en los
+                           dos idiomas y caza excepciones, cifras degeneradas y cadenas
+                           sin traducir. Requiere macOS (osascript), sin dependencias
+tools/validate_palette.py  valida la paleta de series (daltonismo, croma, contraste)
+tools/embed_logo.py        recorta, reescala e incrusta el logo como data URI
+tools/oklch.py             genera hex en OKLCH dentro de gama
+```
+
+Antes de dar por bueno un cambio:
+
+```bash
+osascript -l JavaScript tools/smoke.js
+python3 tools/validate_palette.py "#57a52e,#2f95cf,#d9515f,#9179e0,#b98d16,#23a9aa" dark "#1b1e1a"
+```
+
+## Honestidad de los datos
+
+El panel está construido para no afirmar más de lo que el dato sostiene, y esas reglas
+son parte del diseño, no un adorno:
+
+- **No dibuja tendencias semanales.** El export de Play llega en lotes de cobertura muy
+  desigual; la única gráfica temporal es mensual y lleva el aviso dentro.
+- **Umbrales y guarda estadística.** Un dispositivo se marca «peor que la media» solo si
+  su intervalo de Wilson al 95 % queda entero por encima; las celdas sin base suficiente
+  van en blanco, no a cero.
+- **Volumen y signo siempre juntos.** Una barra de «80 menciones» sin el signo de la nota
+  miente por omisión.
+- **El sentimiento sale del texto, nunca de la estrella**, para que cruzarlos informe.
+- **Corte vacío se dice, no se dibuja.**
+
+## Puerta de acceso
+
+Hay una pantalla de contraseña antes del panel. **Es un cierre de cortesía, no seguridad**:
+la página es un fichero estático, así que quien lea el código fuente ve lo que haya sin
+pasar por ella. La propia pantalla lo advierte. Para proteger datos de verdad hace falta
+autenticación en el servidor.
+
+## Documentación
+
+- `CLAUDE.md` — arquitectura, design system y las reglas no negociables de gráficas.
+- `docs/roadmap.md` — qué falta, por orden, y la deuda conocida.
+
+## Licencia
+
+Sin licencia pública: código interno de BeSoccer.

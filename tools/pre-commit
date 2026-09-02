@@ -1,0 +1,35 @@
+#!/bin/sh
+# Guarda contra publicar datos de usuarios.
+#
+# index.html lleva los datos incrustados, así que un `git commit -a` con el
+# fichero hidratado subiría 710 textos de reviews reales al repositorio. Este
+# hook NO reescribe nada: rechaza el commit y dice qué comando ejecutar.
+#
+# Instalar:
+#   ln -sf ../../tools/pre-commit .git/hooks/pre-commit
+#
+staged=$(git diff --cached --name-only)
+
+for f in $staged; do
+  case "$f" in
+    data/*|*.csv)
+      echo "pre-commit: $f son datos de usuarios y no deben subirse." >&2
+      echo "            Están en .gitignore; si llegaron al índice, saca el fichero con:" >&2
+      echo "              git rm --cached \"$f\"" >&2
+      exit 1;;
+  esac
+done
+
+if echo "$staged" | grep -qx 'index.html'; then
+  n=$(git show :index.html | sed -n 's/.*"n_text":\([0-9]*\).*/\1/p' | head -1)
+  if [ -n "$n" ] && [ "$n" != "0" ]; then
+    echo "pre-commit: el index.html del índice lleva $n reviews con texto de usuarios." >&2
+    echo "            El repositorio va sin datos. Vacíalo y vuelve a añadirlo:" >&2
+    echo "              python3 tools/reviews_build.py --empty --inline index.html" >&2
+    echo "              git add index.html" >&2
+    echo "            (y para volver a trabajar con datos en local:" >&2
+    echo "              python3 tools/reviews_build.py <csv> --inline index.html )" >&2
+    exit 1
+  fi
+fi
+exit 0

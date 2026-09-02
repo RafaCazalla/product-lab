@@ -1,4 +1,13 @@
+# Datos de usuarios: NO van al repositorio.
+# El panel se hidrata en local con:
+#   python3 tools/reviews_build.py <csv de Play> --inline index.html
+# y el index.html del repositorio lleva el esqueleto vacío
+#   python3 tools/reviews_build.py --empty --inline index.html
+data/
+*.csv
+
+# Assets de marca en crudo (el logo va incrustado en index.html)
+*.png
+!docs/**/*.png
+
 .DS_Store
-__pycache__/
-*.pyc
-.claude/settings.local.json
