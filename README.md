@@ -174,12 +174,20 @@ son parte del diseño, no un adorno:
 
 ## Dos capas de acceso, y lo que cada una protege
 
-**1. Restricción por IP (`middleware.js`).** Edge Middleware de Vercel: quien no venga de
-una IP autorizada recibe 403 **antes** de que se sirva una línea del HTML. Esta sí es una
-barrera de servidor. Falla cerrado (si no se puede determinar la IP, deniega) y la página
-de bloqueo muestra la IP detectada, porque una IP doméstica cambia y una conexión IPv6 no
-coincide con la IPv4 esperada. Para cambiar la lista sin commitear: variable de entorno
-`ALLOWED_IPS` en Vercel, IP separadas por comas.
+**1. Restricción por IP (`middleware.js`) — ESCRITA Y PROBADA, PERO HOY INACTIVA.**
+Edge Middleware que devuelve 403 a quien no venga de una IP autorizada, antes de servir
+una línea de HTML. Falla cerrado (si no se puede determinar la IP, deniega) y la página de
+bloqueo muestra la IP detectada, porque una IP doméstica cambia y una conexión IPv6 no
+coincide con la IPv4 esperada. La lista se cambia sin commitear con la variable de entorno
+`ALLOWED_IPS`.
+
+**No confíes en ella tal como está el despliegue.** Este proyecto de Vercel sirve el
+repositorio como estático puro, así que `middleware.js` se entrega como un fichero más en
+lugar de ejecutarse en el borde: se comprueba porque una ruta inexistente devuelve 404 y
+no 403. Para activarla hay que configurar el proyecto de forma que Vercel empaquete el
+middleware, o usar el firewall de Vercel (Settings → Firewall), que hace lo mismo sin
+código. Añadir un `package.json` para forzar el paso de build **no funciona**: convierte
+el proyecto en uno con build y el despliegue falla por no encontrar directorio de salida.
 
 ```bash
 osascript -l JavaScript tools/middleware_test.js
