@@ -45,7 +45,7 @@ function req(h) { return { headers: { get: function (k) { return Object.prototyp
      '2a0c:5a80::/32'     un rango IPv6
    Ojo con IPv6: si la conexión sale por IPv6, la IPv4 autorizada no coincide con
    nada y te quedas fuera. La página de bloqueo dice qué IP ha llegado. */
-const DEFAULT_ALLOW = ['90.161.49.230', '193.70.33.36'];
+const DEFAULT_ALLOW = ['90.161.49.230', '193.70.33.36', '81.37.35.67'];
 
 var config = {
   /* Todo salvo la infraestructura interna de Vercel, que debe pasar siempre. */
@@ -254,9 +254,10 @@ function m(name, ip, rule, want) {
   out.push((ok ? '  OK  ' : '  MAL ') + name + ': ' + ip + ' vs ' + rule + ' -> ' + got);
 }
 out.push('');
-out.push('--- las dos IP autorizadas por defecto ---');
-[['90.161.49.230', true], ['193.70.33.36', true],
- ['90.161.49.231', false], ['193.70.33.37', false], ['8.8.8.8', false]].forEach(function (c) {
+out.push('--- las IP autorizadas por defecto ---');
+[['90.161.49.230', true], ['193.70.33.36', true], ['81.37.35.67', true],
+ ['90.161.49.231', false], ['193.70.33.37', false], ['81.37.35.68', false],
+ ['81.37.35.6', false], ['8.8.8.8', false]].forEach(function (c) {
   ENV.ALLOWED_IPS = undefined;
   var r = middleware(req({'x-vercel-forwarded-for': c[0]}));
   var allowed = (r === undefined);

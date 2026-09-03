@@ -212,9 +212,11 @@ en IPv6:
 2a0c:5a80::/32       un rango IPv6
 ```
 
-La lista por defecto, en `middleware.js`, son dos IPv4 exactas. Si alguna de las dos es
-dinámica, conviene cambiarla por su rango (`/24`) antes de que un cambio de IP deje a
-alguien fuera.
+La lista por defecto, en `middleware.js`, son tres IPv4 exactas. Si alguna es dinámica
+—las domésticas casi siempre lo son— conviene cambiarla por su rango (`/24`) antes de que
+un cambio de IP deje a alguien fuera. Y para no tener que commitear cada vez que cambia
+una, mejor gestionarlas desde `ALLOWED_IPS` en las variables de entorno de Vercel: manda
+sobre esta constante y no requiere despliegue.
 
 **No confíes en ella tal como está el despliegue.** Este proyecto de Vercel sirve el
 repositorio como estático puro, así que `middleware.js` se entrega como un fichero más en
