@@ -25,7 +25,7 @@
      '2a0c:5a80::/32'     un rango IPv6
    Ojo con IPv6: si la conexión sale por IPv6, la IPv4 autorizada no coincide con
    nada y te quedas fuera. La página de bloqueo dice qué IP ha llegado. */
-const DEFAULT_ALLOW = ['90.161.49.230'];
+const DEFAULT_ALLOW = ['90.161.49.230', '193.70.33.36'];
 
 export const config = {
   /* Todo salvo la infraestructura interna de Vercel, que debe pasar siempre. */

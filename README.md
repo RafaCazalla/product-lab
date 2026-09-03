@@ -188,6 +188,10 @@ en IPv6:
 2a0c:5a80::/32       un rango IPv6
 ```
 
+La lista por defecto, en `middleware.js`, son dos IPv4 exactas. Si alguna de las dos es
+dinámica, conviene cambiarla por su rango (`/24`) antes de que un cambio de IP deje a
+alguien fuera.
+
 **No confíes en ella tal como está el despliegue.** Este proyecto de Vercel sirve el
 repositorio como estático puro, así que `middleware.js` se entrega como un fichero más en
 lugar de ejecutarse en el borde: se comprueba porque una ruta inexistente devuelve 404 y
