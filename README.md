@@ -130,10 +130,12 @@ Con este dataset, puntos dibujables por idioma:
 | Portugués | 6 | 5 | 3 |
 | Inglés | **2** | 6 | 3 |
 
-Por eso el grano por defecto es el mes y **la semana es el punto dulce**: la mitad de los
-puntos dibujan y hay 12 periodos en lugar de 4. El diario solo sostiene español y
-francés; en inglés dibuja 2 puntos y no es una línea. Con la base de 5 años y una ingesta
-diaria, el grano diario pasa a tener sentido para los cuatro idiomas.
+**El grano por defecto es la semana**, que con esta muestra es el punto dulce: 24 de 48
+puntos posibles dibujan, hay 12 periodos en lugar de 4 y aparecen los cuatro idiomas
+(6 semanas de 10 en español, 7 de 11 en francés, 5 de 9 en portugués, 6 de 11 en inglés).
+El diario solo sostiene español y francés; en inglés dibuja 2 puntos y no es una línea. El
+mensual aplana la forma. Con la base de 5 años y una ingesta diaria, el grano diario pasa
+a tener sentido para los cuatro idiomas.
 
 ### 6. Lo que este dataset no permite afirmar, y con la base completa sí
 

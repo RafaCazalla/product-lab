@@ -124,9 +124,16 @@ Reglas de esta parte:
 `Rating por idioma, mes a mes` es la única tarjeta que dibuja el tiempo, y existe porque
 se pidió explícitamente. Lo que la hace defendible:
 
-- **Grano mensual, nunca semanal.** La recolección llegó en 9 lotes y se concentra en la
-  primera quincena de cada mes (julio: 4.152 valoraciones en la primera, 6 en la
-  segunda). Un mes no es una muestra comparable con el siguiente, y la nota lo dice.
+- **Grano seleccionable (día · semana · mes), por defecto semana**, con el mismo umbral
+  en los tres: un punto necesita `MIN_POINT` (30) valoraciones o no se dibuja. La
+  recolección llegó en 9 lotes y se concentra en la primera quincena de cada mes (julio:
+  4.152 valoraciones en la primera, 6 en la segunda), así que dos periodos contiguos no
+  son muestras comparables y la nota lo dice.
+- **El eje lleva TODOS los periodos del rango**, también los vacíos. Colocar los puntos
+  por posición hacía que un hueco de tres semanas se viera igual que un día: el eje
+  mentía sobre el tiempo. `lineChart` acepta `null` y parte la línea.
+- **La tarjeta declara cuántos puntos dibuja de cuántos posibles.** Con grano diario son
+  64 de 304: la limitación se ve en vez de disimularse con puntos que no sostiene nadie.
 - **`lineChart` acepta huecos**: un `null` parte la línea en vez de inventar el tramo.
   Un mes que no llega a 60 valoraciones para un idioma no se dibuja.
 - **Punto hueco cuando la base es menor de 300**, y la base va en el tooltip y en la

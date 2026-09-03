@@ -1964,7 +1964,11 @@ const rstate = {
   lang: 'all', fam: 'all', rating: 'all',
   sent: 'all', topic: 'all',
   content: true, fric: false, sort: 'recent', limit: 40,
-  grain: 'month',        /* resolución de la gráfica temporal: day | week | month */
+  /* Resolución de la gráfica temporal: day | week | month.
+     Por defecto la semana: con esta muestra es el grano donde dibujan los
+     cuatro idiomas y hay 12 periodos en lugar de 4. El diario solo sostiene
+     español y francés; el mensual aplana la forma. */
+  grain: 'week',
 };
 
 const isoOf = n => String(n).slice(0, 4) + '-' + String(n).slice(4, 6) + '-' + String(n).slice(6);
@@ -2343,7 +2347,7 @@ function renderRating(root) {
     { id: 'week',  label: 'Semana' },
     { id: 'month', label: 'Mes' },
   ];
-  const grain = GRAINS.some(x => x.id === rstate.grain) ? rstate.grain : 'month';
+  const grain = GRAINS.some(x => x.id === rstate.grain) ? rstate.grain : 'week';
 
   /* clave del periodo al que cae una fecha, y etiqueta para el eje */
   const periodOf = (dayn, gr) => gr === 'month' ? Math.floor(dayn / 100)
@@ -3663,7 +3667,7 @@ $('#r-order').addEventListener('click', () => {
 $('#r-reset').addEventListener('click', () => {
   Object.assign(rstate, { from: D_FROM, to: D_TO, lang: 'all', fam: 'all', rating: 'all',
                           sent: 'all', topic: 'all', content: true, fric: false, sort: 'recent',
-                          limit: 40, grain: 'month' });
+                          limit: 40, grain: 'week' });
   rFrom.value = isoOf(D_FROM); rTo.value = isoOf(D_TO);
   rLang.value = 'all'; rFam.value = 'all'; rSent.value = 'all'; rTopic.value = 'all';
   rRating.value = 'all';
