@@ -39,7 +39,12 @@ function req(h) { return { headers: { get: function (k) { return Object.prototyp
  * manda sobre la constante de abajo.
  */
 
-/* La IP de partida. Ojo: una IP doméstica suele ser dinámica. */
+/* Entradas permitidas. Acepta IP exacta o rango CIDR, IPv4 e IPv6:
+     '90.161.49.230'      una sola IPv4
+     '90.161.49.0/24'     todo el rango (útil: una IP doméstica cambia dentro del suyo)
+     '2a0c:5a80::/32'     un rango IPv6
+   Ojo con IPv6: si la conexión sale por IPv6, la IPv4 autorizada no coincide con
+   nada y te quedas fuera. La página de bloqueo dice qué IP ha llegado. */
 const DEFAULT_ALLOW = ['90.161.49.230'];
 
 var config = {
@@ -52,6 +57,95 @@ function allowList() {
   if (!raw) return DEFAULT_ALLOW;
   const list = raw.split(',').map(s => s.trim()).filter(Boolean);
   return list.length ? list : DEFAULT_ALLOW;
+}
+
+/* ---------------------------------------------------------------------------
+   Coincidencia de IP: exacta o por rango CIDR, en IPv4 y en IPv6.
+   Una lista de IP exactas es frágil de dos maneras concretas: una IP doméstica
+   o de oficina cambia dentro de su rango, y muchas conexiones salen por IPv6
+   sin avisar, con lo que la IPv4 autorizada no coincide con nada. Aceptar
+   `90.161.49.0/24` o `2a0c:5a80::/32` cubre las dos.
+   --------------------------------------------------------------------------- */
+
+/* IPv4 -> entero de 32 bits, o null si no es una IPv4 válida */
+function v4ToInt(ip) {
+  const p = ip.split('.');
+  if (p.length !== 4) return null;
+  let n = 0;
+  for (const part of p) {
+    if (!/^\d{1,3}$/.test(part)) return null;
+    const b = Number(part);
+    if (b > 255) return null;
+    n = n * 256 + b;
+  }
+  return n;
+}
+
+/* IPv6 -> array de 16 bytes, o null. Expande `::` y acepta la forma mixta
+   con IPv4 al final (`::ffff:1.2.3.4`), que es como llegan algunas IPv4. */
+function v6ToBytes(ip) {
+  let s2 = ip.trim();
+  if (s2.startsWith('[') && s2.endsWith(']')) s2 = s2.slice(1, -1);
+  s2 = s2.replace(/%.*$/, '');                 /* fuera el scope id */
+  if (s2.indexOf(':') < 0) return null;
+  const dbl = s2.split('::');
+  if (dbl.length > 2) return null;
+  const parse = part => {
+    if (!part) return [];
+    const out = [];
+    for (const g of part.split(':')) {
+      if (g.indexOf('.') >= 0) {               /* cola IPv4 embebida */
+        const n = v4ToInt(g);
+        if (n === null) return null;
+        out.push((n >>> 24) & 255, (n >>> 16) & 255, (n >>> 8) & 255, n & 255);
+        continue;
+      }
+      if (!/^[0-9a-fA-F]{1,4}$/.test(g)) return null;
+      const v = parseInt(g, 16);
+      out.push((v >> 8) & 255, v & 255);
+    }
+    return out;
+  };
+  const head = parse(dbl[0]);
+  const tail = dbl.length === 2 ? parse(dbl[1]) : [];
+  if (head === null || tail === null) return null;
+  if (dbl.length === 1) return head.length === 16 ? head : null;
+  const gap = 16 - head.length - tail.length;
+  if (gap < 0) return null;
+  return head.concat(new Array(gap).fill(0), tail);
+}
+
+/* ¿los primeros `bits` de a y b coinciden? */
+function samePrefix(a, b, bits) {
+  const full = bits >> 3, rest = bits & 7;
+  for (let i = 0; i < full; i++) if (a[i] !== b[i]) return false;
+  if (!rest) return true;
+  const mask = (0xff << (8 - rest)) & 0xff;
+  return (a[full] & mask) === (b[full] & mask);
+}
+
+function matches(ip, rule) {
+  const slash = rule.indexOf('/');
+  const net = slash < 0 ? rule : rule.slice(0, slash);
+  const bitsRaw = slash < 0 ? null : Number(rule.slice(slash + 1));
+
+  const ipV4 = v4ToInt(ip), netV4 = v4ToInt(net);
+  if (ipV4 !== null && netV4 !== null) {
+    const bits = bitsRaw === null ? 32 : bitsRaw;
+    if (!Number.isInteger(bits) || bits < 0 || bits > 32) return false;
+    if (bits === 0) return true;
+    const mask = bits === 32 ? -1 : ~((1 << (32 - bits)) - 1);
+    return (ipV4 & mask) === (netV4 & mask);
+  }
+
+  const ipV6 = v6ToBytes(ip), netV6 = v6ToBytes(net);
+  if (ipV6 && netV6) {
+    const bits = bitsRaw === null ? 128 : bitsRaw;
+    if (!Number.isInteger(bits) || bits < 0 || bits > 128) return false;
+    return samePrefix(ipV6, netV6, bits);
+  }
+
+  return false;   /* familias distintas o entrada inválida: no coincide */
 }
 
 /**
@@ -112,7 +206,8 @@ esperabas: añade la que aparece aquí.</p>
 
 function middleware(req) {
   const ip = clientIp(req);
-  return allowList().includes(ip) ? undefined : denied(ip);
+  if (!ip) return denied('');                 /* falla cerrado */
+  return allowList().some(rule => matches(ip, rule)) ? undefined : denied(ip);
 }
 
 var out = [];
@@ -149,6 +244,50 @@ out.push(d2.body.indexOf('no se ha podido determinar') >= 0 ? '  OK  sin IP lo d
 /* inyeccion via cabecera */
 var d3 = middleware(req({'x-vercel-forwarded-for':'<script>alert(1)</script>'}));
 out.push(d3.body.indexOf('<script>alert') < 0 ? '  OK  la IP se escapa en el HTML' : '  MAL inyeccion HTML por la cabecera');
+out.push('');
+
+/* --- rangos CIDR e IPv6 --- */
+function m(name, ip, rule, want) {
+  var got = matches(ip, rule);
+  var ok = got === want;
+  if (!ok) fails++;
+  out.push((ok ? '  OK  ' : '  MAL ') + name + ': ' + ip + ' vs ' + rule + ' -> ' + got);
+}
+out.push('');
+out.push('--- coincidencia por rango ---');
+m('IPv4 exacta', '90.161.49.230', '90.161.49.230', true);
+m('IPv4 exacta distinta', '90.161.49.231', '90.161.49.230', false);
+m('IPv4 dentro del /24', '90.161.49.7', '90.161.49.0/24', true);
+m('IPv4 fuera del /24', '90.161.50.7', '90.161.49.0/24', false);
+m('IPv4 dentro del /16', '90.161.200.1', '90.161.0.0/16', true);
+m('IPv4 /32 es exacta', '90.161.49.230', '90.161.49.230/32', true);
+m('IPv4 /32 no cubre al vecino', '90.161.49.231', '90.161.49.230/32', false);
+m('IPv4 /0 cubre todo (no usar)', '8.8.8.8', '0.0.0.0/0', true);
+m('IPv4 malformada no cuela', '90.161.49.999', '90.161.49.0/24', false);
+m('prefijo fuera de rango se rechaza', '90.161.49.7', '90.161.49.0/33', false);
+m('IPv6 exacta', '2a0c:5a80:1e0f:aa00::1', '2a0c:5a80:1e0f:aa00::1', true);
+m('IPv6 dentro del /32', '2a0c:5a80:1e0f:aa00::1', '2a0c:5a80::/32', true);
+m('IPv6 fuera del /32', '2a0d:5a80:1e0f:aa00::1', '2a0c:5a80::/32', false);
+m('IPv6 dentro del /64', '2a0c:5a80:1e0f:aa00:dead:beef::9', '2a0c:5a80:1e0f:aa00::/64', true);
+m('IPv6 fuera del /64', '2a0c:5a80:1e0f:aa01::1', '2a0c:5a80:1e0f:aa00::/64', false);
+m('IPv6 con scope id', 'fe80::1%en0', 'fe80::/10', true);
+m('IPv6 entre corchetes', '[2a0c:5a80::1]', '2a0c:5a80::/32', true);
+m('IPv4 embebida en IPv6', '::ffff:90.161.49.230', '::ffff:90.161.49.0/120', true);
+m('familias cruzadas no coinciden', '2a0c:5a80::1', '90.161.49.0/24', false);
+m('familias cruzadas al reves', '90.161.49.230', '2a0c:5a80::/32', false);
+m('IPv6 malformada no cuela', '2a0c:zzzz::1', '2a0c:5a80::/32', false);
+m('cadena vacia no cuela', '', '90.161.49.0/24', false);
+out.push('');
+out.push('--- la lista acepta rangos ---');
+ENV.ALLOWED_IPS = '90.161.49.0/24, 2a0c:5a80::/32';
+[['90.161.49.7', true], ['2a0c:5a80:1e0f::9', true], ['8.8.8.8', false]].forEach(function (c) {
+  var r = middleware(req({'x-vercel-forwarded-for': c[0]}));
+  var allowed = (r === undefined);
+  if (allowed !== c[1]) fails++;
+  out.push((allowed === c[1] ? '  OK  ' : '  MAL ') + c[0] + ' -> ' + (allowed ? 'PASA' : 'BLOQUEA'));
+});
+ENV.ALLOWED_IPS = undefined;
+
 out.push('');
 out.push(fails ? '=== ' + fails + ' PRUEBAS MAL ===' : '=== todas las pruebas de la restriccion por IP OK ===');
 out.join('\n')

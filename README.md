@@ -179,7 +179,14 @@ Edge Middleware que devuelve 403 a quien no venga de una IP autorizada, antes de
 una línea de HTML. Falla cerrado (si no se puede determinar la IP, deniega) y la página de
 bloqueo muestra la IP detectada, porque una IP doméstica cambia y una conexión IPv6 no
 coincide con la IPv4 esperada. La lista se cambia sin commitear con la variable de entorno
-`ALLOWED_IPS`.
+`ALLOWED_IPS` (entradas separadas por comas) y acepta IP exacta o rango CIDR, en IPv4 y
+en IPv6:
+
+```
+90.161.49.230        una IPv4 concreta
+90.161.49.0/24       todo el rango: una IP doméstica cambia dentro del suyo
+2a0c:5a80::/32       un rango IPv6
+```
 
 **No confíes en ella tal como está el despliegue.** Este proyecto de Vercel sirve el
 repositorio como estático puro, así que `middleware.js` se entrega como un fichero más en

@@ -19,7 +19,12 @@
  * manda sobre la constante de abajo.
  */
 
-/* La IP de partida. Ojo: una IP doméstica suele ser dinámica. */
+/* Entradas permitidas. Acepta IP exacta o rango CIDR, IPv4 e IPv6:
+     '90.161.49.230'      una sola IPv4
+     '90.161.49.0/24'     todo el rango (útil: una IP doméstica cambia dentro del suyo)
+     '2a0c:5a80::/32'     un rango IPv6
+   Ojo con IPv6: si la conexión sale por IPv6, la IPv4 autorizada no coincide con
+   nada y te quedas fuera. La página de bloqueo dice qué IP ha llegado. */
 const DEFAULT_ALLOW = ['90.161.49.230'];
 
 export const config = {
@@ -32,6 +37,95 @@ function allowList() {
   if (!raw) return DEFAULT_ALLOW;
   const list = raw.split(',').map(s => s.trim()).filter(Boolean);
   return list.length ? list : DEFAULT_ALLOW;
+}
+
+/* ---------------------------------------------------------------------------
+   Coincidencia de IP: exacta o por rango CIDR, en IPv4 y en IPv6.
+   Una lista de IP exactas es frágil de dos maneras concretas: una IP doméstica
+   o de oficina cambia dentro de su rango, y muchas conexiones salen por IPv6
+   sin avisar, con lo que la IPv4 autorizada no coincide con nada. Aceptar
+   `90.161.49.0/24` o `2a0c:5a80::/32` cubre las dos.
+   --------------------------------------------------------------------------- */
+
+/* IPv4 -> entero de 32 bits, o null si no es una IPv4 válida */
+function v4ToInt(ip) {
+  const p = ip.split('.');
+  if (p.length !== 4) return null;
+  let n = 0;
+  for (const part of p) {
+    if (!/^\d{1,3}$/.test(part)) return null;
+    const b = Number(part);
+    if (b > 255) return null;
+    n = n * 256 + b;
+  }
+  return n;
+}
+
+/* IPv6 -> array de 16 bytes, o null. Expande `::` y acepta la forma mixta
+   con IPv4 al final (`::ffff:1.2.3.4`), que es como llegan algunas IPv4. */
+function v6ToBytes(ip) {
+  let s2 = ip.trim();
+  if (s2.startsWith('[') && s2.endsWith(']')) s2 = s2.slice(1, -1);
+  s2 = s2.replace(/%.*$/, '');                 /* fuera el scope id */
+  if (s2.indexOf(':') < 0) return null;
+  const dbl = s2.split('::');
+  if (dbl.length > 2) return null;
+  const parse = part => {
+    if (!part) return [];
+    const out = [];
+    for (const g of part.split(':')) {
+      if (g.indexOf('.') >= 0) {               /* cola IPv4 embebida */
+        const n = v4ToInt(g);
+        if (n === null) return null;
+        out.push((n >>> 24) & 255, (n >>> 16) & 255, (n >>> 8) & 255, n & 255);
+        continue;
+      }
+      if (!/^[0-9a-fA-F]{1,4}$/.test(g)) return null;
+      const v = parseInt(g, 16);
+      out.push((v >> 8) & 255, v & 255);
+    }
+    return out;
+  };
+  const head = parse(dbl[0]);
+  const tail = dbl.length === 2 ? parse(dbl[1]) : [];
+  if (head === null || tail === null) return null;
+  if (dbl.length === 1) return head.length === 16 ? head : null;
+  const gap = 16 - head.length - tail.length;
+  if (gap < 0) return null;
+  return head.concat(new Array(gap).fill(0), tail);
+}
+
+/* ¿los primeros `bits` de a y b coinciden? */
+function samePrefix(a, b, bits) {
+  const full = bits >> 3, rest = bits & 7;
+  for (let i = 0; i < full; i++) if (a[i] !== b[i]) return false;
+  if (!rest) return true;
+  const mask = (0xff << (8 - rest)) & 0xff;
+  return (a[full] & mask) === (b[full] & mask);
+}
+
+function matches(ip, rule) {
+  const slash = rule.indexOf('/');
+  const net = slash < 0 ? rule : rule.slice(0, slash);
+  const bitsRaw = slash < 0 ? null : Number(rule.slice(slash + 1));
+
+  const ipV4 = v4ToInt(ip), netV4 = v4ToInt(net);
+  if (ipV4 !== null && netV4 !== null) {
+    const bits = bitsRaw === null ? 32 : bitsRaw;
+    if (!Number.isInteger(bits) || bits < 0 || bits > 32) return false;
+    if (bits === 0) return true;
+    const mask = bits === 32 ? -1 : ~((1 << (32 - bits)) - 1);
+    return (ipV4 & mask) === (netV4 & mask);
+  }
+
+  const ipV6 = v6ToBytes(ip), netV6 = v6ToBytes(net);
+  if (ipV6 && netV6) {
+    const bits = bitsRaw === null ? 128 : bitsRaw;
+    if (!Number.isInteger(bits) || bits < 0 || bits > 128) return false;
+    return samePrefix(ipV6, netV6, bits);
+  }
+
+  return false;   /* familias distintas o entrada inválida: no coincide */
 }
 
 /**
@@ -92,5 +186,6 @@ esperabas: añade la que aparece aquí.</p>
 
 export default function middleware(req) {
   const ip = clientIp(req);
-  return allowList().includes(ip) ? undefined : denied(ip);
+  if (!ip) return denied('');                 /* falla cerrado */
+  return allowList().some(rule => matches(ip, rule)) ? undefined : denied(ip);
 }
