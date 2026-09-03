@@ -25,7 +25,8 @@ y ya. Las gráficas son SVG escrito a mano.
 ## Los datos van dentro del repositorio
 
 `index.html` se publica **con los datos reales incrustados**: 9.754 valoraciones de
-Google Play y 710 reviews con su texto literal, del 31 de mayo al 14 de agosto de 2026.
+Google Play y 710 reviews con su texto literal, del **31 de mayo al 14 de agosto de 2026**
+(el grueso cae en junio, julio y agosto; mayo son solo los últimos días).
 
 Conviene saber qué implica, porque es una decisión y no un descuido:
 
@@ -55,6 +56,86 @@ Y para dejar el `index.html` sin datos (estado vacío, útil si algún día se s
 ```bash
 python3 tools/reviews_build.py --empty --inline index.html
 ```
+
+## Para replicarlo con la base de datos completa
+
+Este panel es un **prototipo con dos meses y medio de datos** (31 may – 14 ago 2026,
+9.754 valoraciones). Lo que sigue es lo que hay que saber para llevarlo a los 5 años de
+histórico, por orden de lo que rompe antes.
+
+### 1. El formato aguanta; incrustarlo en el HTML, no
+
+Las valoraciones no van como objetos JSON, sino como una cadena de **10 caracteres por
+fila** con índices en base 36 a tablas de idioma, día, dispositivo y versión:
+
+```
+rating(1) idioma(1) día(2) dispositivo(3) versión(2) respuesta(1)
+```
+
+Se descomprime una vez a arrays tipados y a partir de ahí filtrar por cualquier cruce es
+un recorrido lineal sin índices ni caché. Eso escala bien:
+
+| | Valoraciones | Con texto | Empaquetado |
+|---|---|---|---|
+| Hoy | 9.754 | 710 | 445 KB (en el HTML) |
+| 5 años, conservador | ~120.000 | ~8.900 | ~2,4 MB |
+| 5 años, al ritmo del mejor mes | ~355.000 | ~26.000 | ~6,8 MB |
+
+Lo que no aguanta es meterlo en el `index.html`. A partir de ~1 MB hay que **servirlo
+desde un endpoint** y quitar el bloque `const RD`. El cambio es acotado: `metric()`,
+`rSel()` y las funciones `*Rows()` son los únicos puntos de entrada, y `renderActive()` es
+el único sitio que habría que volver `async` (ya mantiene el render anterior en opacidad
+reducida mientras llegan los datos, sin esqueleto ni salto de layout).
+
+### 2. Los agregados deberían bajar al servidor
+
+Con 350.000 filas, recorrerlas en el navegador por cada cambio de filtro empieza a
+notarse. Lo natural es que el servidor devuelva ya agregado lo que hoy calculan
+`bucketBy()` y `statOf()`: `GROUP BY` de idioma, versión, dispositivo y día, con la
+distribución de 1-5★ por grupo. Los verbatims se paginan aparte.
+
+Con eso el navegador solo pinta, y las reglas de honestidad del panel (umbrales, Wilson,
+celdas en blanco) se aplican igual sobre los agregados.
+
+### 3. El texto de las reviews merece vivir aparte
+
+Del fichero actual, **solo el 14 % es dato personal**: los 40 KB del texto literal. El
+resto —clasificación, filas empaquetadas, agregados— no contiene una palabra escrita por
+un usuario. Separarlos permite que el análisis sea accesible sin exponer el texto, y que
+el texto se borre en cualquier momento sin tocar nada más.
+
+### 4. La clasificación es un léxico, no un modelo
+
+`tools/reviews_build.py` etiqueta tema y sentimiento con un léxico multiidioma. Es
+determinista y auditable: se puede revisar por qué una review lleva un tema. Sus límites
+están medidos: identifica tema en el 29 % de los textos, y turco, persa, birmano y
+amárico caen en «sin señal». Con 26.000 reviews conviene pasar a un modelo, pero
+**guardando la etiqueta junto al texto** para que el panel siga siendo determinista y la
+revisión humana siga siendo posible.
+
+### 5. Lo que este dataset no permite afirmar, y con la base completa sí
+
+La recolección llegó en 9 lotes de cobertura muy desigual y concentrada en la primera
+quincena de cada mes (julio: 4.152 valoraciones en la primera, 6 en la segunda). Por eso
+el panel **se niega a dibujar tendencias semanales** y la única gráfica temporal es
+mensual, con huecos y el aviso dentro. Con ingesta continua eso desaparece: se puede
+bajar a semanas, quitar los huecos y activar alertas por umbral.
+
+### Lo que el prototipo ya deja ver
+
+Hallazgos reales de estos dos meses y medio, con las cifras que los sostienen:
+
+- **El cuello de botella es el texto, no la nota.** Solo el 7,4 % de las valoraciones
+  trae texto y apenas el 2,1 % deja algo accionable. Las 1-2★ sin texto no son
+  respondibles ni diagnosticables.
+- **El rating por idioma está confundido con el hardware.** El francés puntúa 4,41 frente
+  al 4,71 del español, y el 46 % del volumen en francés viene de dispositivos Transsion
+  de gama de entrada, frente al 7,4 % en español.
+- **Cada mercado se queja de otra cosa.** El español de publicidad (52 quejas), el francés
+  de que la app se cierra (11, sobre una base seis veces menor). Son dos hojas de ruta.
+- **El volumen sin signo engaña.** «Datos, cobertura y estadísticas» es el segundo tema
+  más mencionado (77), pero 59 de esas menciones son de 4-5★: es lo que más se elogia, no
+  el segundo problema.
 
 ## Herramientas
 
