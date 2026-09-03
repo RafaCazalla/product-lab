@@ -1099,7 +1099,15 @@ function plotCard(o) {
   let showing = 'chart';
   const btn = E('button', 'mini', t('Tabla'));
   btn.type = 'button'; btn.setAttribute('aria-pressed', 'false');
-  head(c, o.title, o.sub, o.tableFn ? btn : o.extra);
+  /* Si la tarjeta trae controles propios (`extra`) y además gemela en tabla,
+     van juntos: el botón de tabla al final. */
+  let acciones = o.tableFn ? btn : o.extra;
+  if (o.tableFn && o.extra) {
+    acciones = E('div');
+    acciones.style.cssText = 'display:flex;gap:6px;align-items:center;flex-wrap:wrap';
+    acciones.appendChild(o.extra); acciones.appendChild(btn);
+  }
+  head(c, o.title, o.sub, acciones);
   /* El titular va calculado del corte, no escrito a mano: dice el hallazgo en
      palabras y se rehace con cada filtro. Es aritmética, no interpretación. */
   if (o.insight) c.appendChild(E('p', 'insight', o.insight));
@@ -1838,6 +1846,28 @@ const I18N = {
       'Sign out',
     'Aviso: esto solo evita visitas casuales. La página es un fichero estático, así que quien mire el código fuente ve los datos sin pasar por aquí.':
       'Note: this only keeps casual visitors out. The page is a static file, so anyone who reads the source sees the data without coming through here.',
+    'Día':
+      'Day',
+    'Semana':
+      'Week',
+    'días':
+      'days',
+    'semanas':
+      'weeks',
+    'meses':
+      'months',
+    'Periodo':
+      'Period',
+    'Rating por idioma, día a día':
+      'Rating by language, day by day',
+    'Rating por idioma, semana a semana':
+      'Rating by language, week by week',
+    'Ningún idioma se mueve más de 0,25 puntos entre puntos consecutivos.':
+      'No language moves more than 0.25 points between consecutive points.',
+    '{n} puntos dibujados de {total} posibles · hueco donde el periodo no llega a {min} valoraciones · punto hueco = base menor de {thin}':
+      '{n} of {total} possible points drawn · a gap where the period falls short of {min} ratings · hollow point = base under {thin}',
+    'El eje lleva todos los {gr} del rango, también los que no tienen datos: así un hueco de varias semanas no se ve como un día. La recolección llegó en {k} lotes y se concentra en la primera quincena de cada mes, así que dos periodos contiguos NO son muestras comparables. Con el grano diario hay idiomas que casi no dibujan porque no reúnen {min} valoraciones al día: eso es la muestra, no un problema del panel.':
+      'The axis carries every one of the {gr} in the range, including those with no data: that way a gap of several weeks does not look like a single day. Collection arrived in {k} batches and clusters in the first fortnight of each month, so two adjacent periods are NOT comparable samples. At daily resolution some languages barely draw at all because they do not reach {min} ratings a day: that is the sample, not a fault of the dashboard.',
   },
 };
 </script>
@@ -1934,6 +1964,7 @@ const rstate = {
   lang: 'all', fam: 'all', rating: 'all',
   sent: 'all', topic: 'all',
   content: true, fric: false, sort: 'recent', limit: 40,
+  grain: 'month',        /* resolución de la gráfica temporal: day | week | month */
 };
 
 const isoOf = n => String(n).slice(0, 4) + '-' + String(n).slice(4, 6) + '-' + String(n).slice(6);
@@ -2295,70 +2326,142 @@ function renderRating(root) {
       ])),
   }));
 
-  /* --- evolución por idioma. Un solo eje (rating 1-5), color por idioma en
-         orden fijo, y hueco donde el mes no reúne base: unir esos puntos
-         dibujaría una tendencia que la muestra no sostiene. --- */
+  /* --- evolución por idioma.
+         Tres decisiones que sostienen esta tarjeta:
+         · El eje lleva TODOS los periodos del rango, no solo los que tienen
+           datos. Si se colocaran los puntos por posición, un hueco de tres
+           semanas se vería igual que un día y el eje mentiría.
+         · Un punto necesita al menos MIN_POINT valoraciones. Por debajo, la
+           media de una nota es ruido: con n=10 el error típico ronda ±0,3 en
+           una escala de 1 a 5.
+         · Un solo eje (rating 1-5) y el color sigue al idioma en orden fijo,
+           no a su posición en la serie. --- */
   g.appendChild(eyebrow(t('Evolución en el tiempo'), 'eb-time'));
-  const MIN_MONTH = 60;
-  const mKeys = [...new Set(rSel({ lang: 1 }).map(i => Math.floor(R_dayn[i] / 100)))].sort();
+  const MIN_POINT = 30, THIN_POINT = 150;
+  const GRAINS = [
+    { id: 'day',   label: 'Día' },
+    { id: 'week',  label: 'Semana' },
+    { id: 'month', label: 'Mes' },
+  ];
+  const grain = GRAINS.some(x => x.id === rstate.grain) ? rstate.grain : 'month';
+
+  /* clave del periodo al que cae una fecha, y etiqueta para el eje */
+  const periodOf = (dayn, gr) => gr === 'month' ? Math.floor(dayn / 100)
+    : gr === 'week' ? numOf(weekOf(dayn)) : dayn;
+  const periodLabel = (key, gr) => gr === 'month' ? monthName(key % 100 - 1) : dmy(key);
+
+  /* Todos los periodos del rango, con datos o sin ellos. */
+  function periodsIn(gr, fromN, toN) {
+    const out = [];
+    const mk = n => new Date(Date.UTC(Math.floor(n / 10000), Math.floor(n / 100) % 100 - 1, n % 100));
+    const num = d2 => d2.getUTCFullYear() * 10000 + (d2.getUTCMonth() + 1) * 100 + d2.getUTCDate();
+    if (gr === 'month') {
+      let y = Math.floor(fromN / 10000), m = Math.floor(fromN / 100) % 100;
+      const ly = Math.floor(toN / 10000), lm = Math.floor(toN / 100) % 100;
+      while (y * 100 + m <= ly * 100 + lm) {
+        out.push(y * 100 + m);
+        m++; if (m > 12) { m = 1; y++; }
+      }
+      return out;
+    }
+    let d2 = mk(fromN);
+    if (gr === 'week') d2 = mk(numOf(weekOf(fromN)));
+    const end = mk(toN);
+    while (d2 <= end) {
+      out.push(num(d2));
+      d2.setUTCDate(d2.getUTCDate() + (gr === 'week' ? 7 : 1));
+    }
+    return out;
+  }
+
+  const evoIds = rSel({ lang: 1 });
+  /* Un idioma entra si tiene volumen para dar al menos dos puntos dibujables. */
   const evoLangs = TOP_LANGS.filter(l => {
-    const n = rSel({ lang: 1 }).filter(i => RD.langs[R_lang[i]] === l).length;
-    return n >= 200;
+    const mine = evoIds.filter(i => RD.langs[R_lang[i]] === l);
+    if (mine.length < MIN_POINT * 2) return false;
+    const per = {};
+    mine.forEach(i => { const k = periodOf(R_dayn[i], grain); per[k] = (per[k] || 0) + 1; });
+    return Object.keys(per).filter(k => per[k] >= MIN_POINT).length >= 2;
   });
   const oneStar = /^[1-5]$/.test(rstate.rating);
-  if (mKeys.length >= 2 && evoLangs.length && !oneStar) {
+  const keys = evoIds.length ? periodsIn(grain, rstate.from, rstate.to) : [];
+
+  if (keys.length >= 2 && evoLangs.length && !oneStar) {
     const COLS = ['var(--s1)', 'var(--s2)', 'var(--s3)', 'var(--s4)'];
     const cell = {};
-    rSel({ lang: 1 }).forEach(i => {
+    evoIds.forEach(i => {
       const l = RD.langs[R_lang[i]];
       if (evoLangs.indexOf(l) < 0) return;
-      const k = l + '|' + Math.floor(R_dayn[i] / 100);
+      const k = l + '|' + periodOf(R_dayn[i], grain);
       (cell[k] = cell[k] || []).push(R_rat[i]);
     });
+    const bases = evoLangs.map(l => keys.map(k => (cell[l + '|' + k] || []).length));
     const evo = evoLangs.map((l, k) => ({
       name: langName(l), color: COLS[k % COLS.length], emph: k === 0,
-      values: mKeys.map(m => {
-        const a = cell[l + '|' + m];
-        return a && a.length >= MIN_MONTH ? a.reduce((x, y) => x + y, 0) / a.length : null;
+      values: keys.map((key, j) => {
+        const a = cell[l + '|' + key];
+        return a && a.length >= MIN_POINT ? a.reduce((x, y) => x + y, 0) / a.length : null;
       }),
     }));
-    const bases = evoLangs.map(l => mKeys.map(m => (cell[l + '|' + m] || []).length));
-    const thin = evoLangs.map((l, k) => mKeys.map((m, j) => bases[k][j] < 300));
-    /* el aviso concreto: dónde da el salto y cuánto cambia la base debajo */
+    const thin = evoLangs.map((l, k) => keys.map((key, j) => bases[k][j] < THIN_POINT));
+    const drawn = evo.reduce((a, sr) => a + sr.values.filter(v => v !== null).length, 0);
+
+    /* El aviso concreto: el mayor salto entre puntos consecutivos DIBUJADOS,
+       con el cambio de base debajo, que es lo que suele explicarlo. */
     let jump = null;
     evo.forEach((sr, k) => {
-      for (let j = 1; j < mKeys.length; j++) {
-        const a = sr.values[j - 1], b = sr.values[j];
-        if (a === null || b === null) continue;
-        const d = Math.abs(b - a);
-        if (d >= 0.25 && (!jump || d > jump.d)) {
-          jump = { d, l: sr.name, va: a, vb: b, from: mKeys[j - 1], to: mKeys[j],
-                   na: bases[k][j - 1], nb: bases[k][j] };
+      let prev = -1;
+      for (let j = 0; j < keys.length; j++) {
+        if (sr.values[j] === null) continue;
+        if (prev >= 0) {
+          const d = Math.abs(sr.values[j] - sr.values[prev]);
+          if (d >= 0.25 && (!jump || d > jump.d)) {
+            jump = { d, l: sr.name, va: sr.values[prev], vb: sr.values[j],
+                     from: keys[prev], to: keys[j], na: bases[k][prev], nb: bases[k][j] };
+          }
         }
+        prev = j;
       }
     });
     const evoIns = jump
       ? t('{l} pasa de {a} a {b} entre {ma} y {mb}, pero su base pasa de {na} a {nb} valoraciones.', {
           l: jump.l, a: star(jump.va), b: star(jump.vb),
-          ma: monthName(jump.from % 100 - 1), mb: monthName(jump.to % 100 - 1),
+          ma: periodLabel(jump.from, grain), mb: periodLabel(jump.to, grain),
           na: nf(jump.na), nb: nf(jump.nb) })
-      : t('Ningún idioma se mueve más de 0,25 puntos entre meses consecutivos.');
+      : t('Ningún idioma se mueve más de 0,25 puntos entre puntos consecutivos.');
+
+    /* selector de grano: el mismo dato a tres resoluciones */
+    const gsel = E('div');
+    gsel.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap';
+    GRAINS.forEach(x => {
+      const b = E('button', 'mini', t(x.label));
+      b.type = 'button';
+      b.setAttribute('aria-pressed', String(x.id === grain));
+      b.addEventListener('click', () => { rstate.grain = x.id; renderActive(); });
+      gsel.appendChild(b);
+    });
+
+    const titulo = grain === 'day' ? t('Rating por idioma, día a día')
+      : grain === 'week' ? t('Rating por idioma, semana a semana')
+      : t('Rating por idioma, mes a mes');
     g.appendChild(plotCard({
-      key: 'evo', span: 'c12', title: t('Rating por idioma, mes a mes'),
-      sub: t('un punto por mes e idioma · hueco donde el mes no llega a {n} valoraciones · punto hueco = base menor de 300',
-        { n: MIN_MONTH }),
+      key: 'evo', span: 'c12', title: titulo,
+      sub: t('{n} puntos dibujados de {total} posibles · hueco donde el periodo no llega a {min} valoraciones · punto hueco = base menor de {thin}',
+        { n: nf(drawn), total: nf(keys.length * evoLangs.length), min: MIN_POINT, thin: THIN_POINT }),
       insight: evoIns,
+      extra: gsel,
       legend: legend(evo.map(x => ({ color: x.color, name: x.name })), 'line'),
       draw: lineChart({
-        x: mKeys.map(m => monthName(m % 100 - 1)),
+        x: keys.map(k => periodLabel(k, grain)),
         series: evo, bases, thin, bands: [],
-        fmt: v => nf(v, 2), height: 280, padR: 66, yMax: 5,
-        alt: t('Rating por idioma, mes a mes') + '. ' + evoIns,
+        fmt: v => nf(v, 2), height: 300, padR: 66, yMax: 5,
+        alt: titulo + '. ' + evoIns,
       }),
-      note: t('Esta es la única tarjeta del panel que dibuja el tiempo, y hay que leerla con cuidado: la recolección llegó en {k} lotes y se concentra en la primera quincena de cada mes, así que un mes NO es una muestra comparable con el siguiente. Un salto entre meses puede ser la muestra y no el producto; mira siempre la base con el ratón o en la tabla.',
-        { k: RD.meta.batches.length }),
-      tableFn: () => table([t('Mes')].concat(evo.map(x => x.name)).concat(evo.map(x => x.name + ' · n')),
-        mKeys.map((m, j) => [monthName(m % 100 - 1)]
+      note: t('El eje lleva todos los {gr} del rango, también los que no tienen datos: así un hueco de varias semanas no se ve como un día. La recolección llegó en {k} lotes y se concentra en la primera quincena de cada mes, así que dos periodos contiguos NO son muestras comparables. Con el grano diario hay idiomas que casi no dibujan porque no reúnen {min} valoraciones al día: eso es la muestra, no un problema del panel.',
+        { gr: grain === 'day' ? t('días') : grain === 'week' ? t('semanas') : t('meses'),
+          k: RD.meta.batches.length, min: MIN_POINT }),
+      tableFn: () => table([t('Periodo')].concat(evo.map(x => x.name)).concat(evo.map(x => x.name + ' · n')),
+        keys.map((k, j) => [periodLabel(k, grain)]
           .concat(evo.map(x => x.values[j] === null ? '—' : star(x.values[j])))
           .concat(bases.map(b => nf(b[j]))))),
     }));
@@ -3559,7 +3662,8 @@ $('#r-order').addEventListener('click', () => {
 });
 $('#r-reset').addEventListener('click', () => {
   Object.assign(rstate, { from: D_FROM, to: D_TO, lang: 'all', fam: 'all', rating: 'all',
-                          sent: 'all', topic: 'all', content: true, fric: false, sort: 'recent', limit: 40 });
+                          sent: 'all', topic: 'all', content: true, fric: false, sort: 'recent',
+                          limit: 40, grain: 'month' });
   rFrom.value = isoOf(D_FROM); rTo.value = isoOf(D_TO);
   rLang.value = 'all'; rFam.value = 'all'; rSent.value = 'all'; rTopic.value = 'all';
   rRating.value = 'all';

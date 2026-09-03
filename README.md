@@ -113,7 +113,29 @@ amárico caen en «sin señal». Con 26.000 reviews conviene pasar a un modelo, 
 **guardando la etiqueta junto al texto** para que el panel siga siendo determinista y la
 revisión humana siga siendo posible.
 
-### 5. Lo que este dataset no permite afirmar, y con la base completa sí
+### 5. La resolución temporal la marca la muestra, no el gusto
+
+La tarjeta de evolución tiene selector de grano (día · semana · mes) y el mismo umbral en
+los tres: un punto necesita **30 valoraciones** para dibujarse, porque por debajo la media
+de una nota es ruido (con n=10 el error típico ronda ±0,3 en una escala de 1 a 5). El eje
+lleva todos los periodos del rango, también los vacíos, para que un hueco de tres semanas
+no se vea como un día.
+
+Con este dataset, puntos dibujables por idioma:
+
+| Idioma | Día | Semana | Mes |
+|---|---|---|---|
+| Español | 24 | 6 | 3 |
+| Francés | 32 | 7 | 4 |
+| Portugués | 6 | 5 | 3 |
+| Inglés | **2** | 6 | 3 |
+
+Por eso el grano por defecto es el mes y **la semana es el punto dulce**: la mitad de los
+puntos dibujan y hay 12 periodos en lugar de 4. El diario solo sostiene español y
+francés; en inglés dibuja 2 puntos y no es una línea. Con la base de 5 años y una ingesta
+diaria, el grano diario pasa a tener sentido para los cuatro idiomas.
+
+### 6. Lo que este dataset no permite afirmar, y con la base completa sí
 
 La recolección llegó en 9 lotes de cobertura muy desigual y concentrada en la primera
 quincena de cada mes (julio: 4.152 valoraciones en la primera, 6 en la segunda). Por eso

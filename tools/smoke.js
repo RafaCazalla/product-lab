@@ -229,6 +229,18 @@ RD.days.forEach(function (d) {
   tryView('día ' + d + ' rev', renderReviews);
 });
 
+/* 3b. los tres granos de la gráfica temporal, en varios cortes: con grano
+       diario hay idiomas que no reúnen base y la serie se queda a huecos, que
+       es justo el caso que antes reventaba con 0/0. */
+['day', 'week', 'month'].forEach(function (G) {
+  [{}, { lang: 'es' }, { lang: 'en' }, { rating: 'neg' }, { fam: 'Tecno' },
+   { from: 20260801, to: 20260814 }, { from: 20260615, to: 20260616 }].forEach(function (c) {
+    setCut(Object.assign({ grain: G }, c));
+    tryView('grano ' + G + ' ' + JSON.stringify(c), renderRating);
+  });
+});
+setCut({});
+
 /* 4. ordenaciones y paginación de la lista de verbatims */
 ['recent', 'worst', 'long'].forEach(function (S) {
   [10, 40, 500].forEach(function (N) {
