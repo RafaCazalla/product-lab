@@ -22,12 +22,25 @@ y ya. Las gráficas son SVG escrito a mano.
   sin pulsar nada es aritmética; la interpretación la escribe Claude solo al pulsar
   «Ejecutar contexto», y siempre sobre el brief de datos del corte activo.
 
-## Este repositorio no lleva datos
+## Los datos van dentro del repositorio
 
-`index.html` se publica aquí con el **esqueleto de datos vacío**: el texto de las reviews
-es de usuarios reales y no se publica. La página arranca y enseña su estado vacío.
+`index.html` se publica **con los datos reales incrustados**: 9.754 valoraciones de
+Google Play y 710 reviews con su texto literal, del 31 de mayo al 14 de agosto de 2026.
 
-Para hidratarlo con un export de la consola de Google Play:
+Conviene saber qué implica, porque es una decisión y no un descuido:
+
+- El texto es de **usuarios reales**. Son reseñas públicas de Google Play, pero aquí van
+  agregadas en un volcado, y en un repositorio público eso se clona, se indexa y queda
+  archivado. Unas pocas reseñas contienen el nombre que su autor escribió en el propio
+  texto; el filtro «Descartar ruido», activo por defecto, las deja fuera de la lista de
+  verbatims, pero siguen en el fichero.
+- No hay nombres de autor de Play: esa columna no existe en el export. En las respuestas
+  del equipo, el saludo con el nombre del usuario se normaliza a `{nombre}`.
+- **Ni la pantalla de contraseña ni la restricción por IP protegen esto.** La primera es
+  un cierre de cortesía dentro de un fichero estático; la segunda cubre la URL de Vercel,
+  no GitHub.
+
+Para regenerar los datos desde un export de la consola de Google Play:
 
 ```bash
 python3 tools/reviews_build.py mi_export.csv -o data/reviews.json --inline index.html
@@ -37,17 +50,10 @@ El CSV debe traer estas columnas: `id`, `package_name`, `app_version_code`, `app
 `language`, `device`, `date`, `rating`, `text`, `developer_reply_date`,
 `developer_reply_text`, `review_link`, `took_date`.
 
-Para volver al esqueleto vacío antes de commitear:
+Y para dejar el `index.html` sin datos (estado vacío, útil si algún día se separan):
 
 ```bash
 python3 tools/reviews_build.py --empty --inline index.html
-```
-
-Y para que no se te olvide, hay un hook que **rechaza** el commit si `index.html` lleva
-reviews dentro (no reescribe nada, solo avisa):
-
-```bash
-ln -sf ../../tools/pre-commit .git/hooks/pre-commit
 ```
 
 ## Herramientas
@@ -103,8 +109,8 @@ seguridad**: la página es un fichero estático, así que quien lea el código f
 que haya sin pasar por ella. La propia pantalla lo advierte.
 
 **Lo que ninguna de las dos protege: este repositorio.** El middleware cubre la URL de
-Vercel; si el repositorio es público, cualquiera lee lo que haya en `index.html` desde
-GitHub. Por eso el repositorio va sin datos.
+Vercel; siendo el repositorio público, cualquiera lee los datos de `index.html` desde
+GitHub sin pasar por ninguna de las dos capas. Es una decisión tomada a sabiendas.
 
 ## Documentación
 
