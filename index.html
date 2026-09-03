@@ -1509,8 +1509,6 @@ const I18N = {
       'By version and by device',
     'Rating medio por versión de la app':
       'Average rating by app version',
-    'versiones con n ≥ 60 · la línea es la media del corte':
-      'versions with n ≥ 60 · the line is the slice average',
     'media {m}':
       'average {m}',
     'Versión':
@@ -1559,20 +1557,8 @@ const I18N = {
       'sufficient',
     'parcial':
       'partial',
-    'Cobertura de respuesta del equipo':
-      'Team reply coverage',
-    'sobre las valoraciones que traen texto, por nota':
-      'over ratings that carry text, by score',
     'con texto':
       'with text',
-    'respondidas':
-      'answered',
-    'Con texto':
-      'With text',
-    'Respondidas (con texto)':
-      'Answered (with text)',
-    'Respondidas (total)':
-      'Answered (total)',
     'La voz · lo que escriben los que escriben':
       'The voice · what the writers write',
     'el texto es opcional en Google Play, y ahí está el cuello de botella':
@@ -1667,20 +1653,8 @@ const I18N = {
       '% of the language',
     'El numerador son reviews de 1-2★ que mencionan el tema; el denominador, todas las reviews de ese idioma. Se normaliza por idioma y no por el total global: si no, el español taparía todo por volumen. Entre paréntesis, la base de cada columna.':
       'The numerator is 1-2★ reviews mentioning the topic; the denominator, all reviews in that language. It is normalised per language rather than against the global total: otherwise Spanish would drown everything by volume. In brackets, each column’s base.',
-    'El texto frente a la estrella':
-      'Text versus star',
-    'Qué dice el texto y qué dice la estrella':
-      'What the text says and what the star says',
-    'el sentimiento se calcula del texto, nunca de la nota: por eso el cruce informa':
-      'sentiment is computed from the text, never from the score: that is why the cross is informative',
     'reviews':
       'reviews',
-    'Sentimiento del texto':
-      'Text sentiment',
-    'Tasa de fricción por familia de dispositivo':
-      'Friction rate by device family',
-    'familias con al menos 40 reviews de texto en el corte':
-      'families with at least 40 text reviews in this slice',
     'con fricción':
       'with friction',
     'Cómo se mueve cada tema por mes':
@@ -1809,8 +1783,6 @@ const I18N = {
       'No model with n ≥ 30 separates from the average with certainty.',
     '{k} de {n} semanas del corte no llegan a 100 valoraciones.':
       '{k} of {n} weeks in this slice fall short of 100 ratings.',
-    'Se responde al {p} de las quejas escritas de 1-2★.':
-      '{p} of written 1-2★ complaints get a reply.',
     'De cada 100 valoraciones, {n} dejan algo sobre lo que actuar.':
       'Out of every 100 ratings, {n} leave something to act on.',
     '{tema} es el más mencionado ({n}); el {p} de sus menciones son de 1-2★.':
@@ -1819,8 +1791,6 @@ const I18N = {
       '{tema} is the most acidic: {p} of its mentions are 1-2★.',
     '{l}: {tema} ({p})':
       '{l}: {tema} ({p})',
-    '{n} reviews de 4★ o 5★ traen un texto mixto o una petición.':
-      '{n} reviews rated 4★ or 5★ carry mixed text or a request.',
     'valoraciones por cada nota, de 5★ a 1★':
       'ratings at each score, 5★ down to 1★',
     'Volumen absoluto, no tasa: el idioma con más valoraciones tiende a acumular más quejas aunque su tasa sea mejor. La tasa está en la tarjeta de al lado.':
@@ -1829,14 +1799,8 @@ const I18N = {
       'The sign is the star the writer actually gave, not a reading of the text: it is unambiguous. To keep a single side, use the “Rating” filter above.',
     'Volumen y acidez son dos preguntas distintas y esta tarjeta responde la segunda. Con menos de 5 menciones el porcentaje no dice nada, así que esos temas quedan fuera.':
       'Volume and acidity are two different questions, and this card answers the second. Below 5 mentions the percentage says nothing, so those topics are left out.',
-    'El sentimiento sale de un léxico aplicado al texto; la estrella la puso el usuario. Las celdas donde no coinciden son las que traen información.':
-      'Sentiment comes from a lexicon applied to the text; the star was given by the user. The cells where the two disagree are the informative ones.',
-    'Los bigotes son el intervalo de confianza al 95 %. Si se solapan, la diferencia entre familias no es concluyente con este volumen de texto.':
-      'The whiskers are the 95 % confidence interval. Where they overlap, the difference between families is not conclusive at this text volume.',
     'Los bigotes son el intervalo de Wilson al 95 %. Exigir que no toque la media evita perseguir modelos que solo parecen malos por tener pocas valoraciones. El nombre es el codename que reporta Play, no el comercial.':
       'The whiskers are the 95 % Wilson interval. Requiring it not to touch the average avoids chasing models that only look bad because they have few ratings. The name is the codename Play reports, not the commercial one.',
-    'Solo se puede responder a lo que trae texto. En este corte llegan {n} notas de 1-2★ sin una palabra.':
-      'Only what carries text can be answered. In this slice, {n} ratings of 1-2★ arrive without a word.',
     'Escribir es opcional en Google Play: de ahí la caída del primer paso. Sin texto, una nota no es respondible ni diagnosticable.':
       'Writing is optional on Google Play: hence the drop at the first step. Without text, a rating can neither be answered nor diagnosed.',
     'El desglose por idioma, versión y familia de dispositivo está en «Rating».':
@@ -1847,14 +1811,8 @@ const I18N = {
       'Over time',
     'Rating por idioma, mes a mes':
       'Rating by language, month by month',
-    'un punto por mes e idioma · hueco donde el mes no llega a {n} valoraciones · punto hueco = base menor de 300':
-      'one point per month and language · a gap where the month falls short of {n} ratings · hollow point = base under 300',
     '{l} pasa de {a} a {b} entre {ma} y {mb}, pero su base pasa de {na} a {nb} valoraciones.':
       '{l} moves from {a} to {b} between {ma} and {mb}, but its base moves from {na} to {nb} ratings.',
-    'Ningún idioma se mueve más de 0,25 puntos entre meses consecutivos.':
-      'No language moves more than 0.25 points between consecutive months.',
-    'Esta es la única tarjeta del panel que dibuja el tiempo, y hay que leerla con cuidado: la recolección llegó en {k} lotes y se concentra en la primera quincena de cada mes, así que un mes NO es una muestra comparable con el siguiente. Un salto entre meses puede ser la muestra y no el producto; mira siempre la base con el ratón o en la tabla.':
-      'This is the only card here that draws time, and it needs reading with care: collection arrived in {k} batches and clusters in the first fortnight of each month, so one month is NOT a sample comparable with the next. A jump between months may be the sample rather than the product; always check the base on hover or in the table.',
     'Mes':
       'Month',
     'Esta vista no se ha podido pintar':
