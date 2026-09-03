@@ -990,7 +990,10 @@ function groupedCols(cfg) {
     const h = cfg.height || 224, pad = { t: 12, r: 8, b: 42, l: 46 };
     const groups = cfg.groups, series = cfg.series;
     const iw = Math.max(60, w - pad.l - pad.r), ih = h - pad.t - pad.b;
-    const all = series.flatMap(s => s.values).filter(v => Number.isFinite(v));
+    /* El techo del eje tiene que contar también los bigotes: si no, un
+       intervalo ancho se sale de la caja y se dibuja por encima del título. */
+    const all = series.flatMap(s => s.values.concat((s.ci || []).map(c => c && c[1])))
+      .filter(v => Number.isFinite(v));
     const ticks = niceTicks(0, (all.length ? Math.max(...all) : 1) * 1.06 || 1, 4);
     const y1 = ticks[ticks.length - 1] || 1;
     const Y = v => pad.t + ih - v / y1 * ih;
@@ -1011,9 +1014,29 @@ function groupedCols(cfg) {
       const x0 = cx - (bw * series.length + (series.length - 1) * 2) / 2;
       series.forEach((s, si) => {
         const v = s.values[gi], x = x0 + si * (bw + 2);
+        if (!Number.isFinite(v)) return;   /* hueco: no se inventa la columna */
         svg.appendChild(S('path', { d: roundTopPath(x, Y(v), bw, pad.t + ih - Y(v), 4), fill: s.color }));
-        const hit = S('rect', { x: x - 1, y: pad.t, width: bw + 2, height: ih, class: 'hit cellhit', tabindex: 0, 'aria-label': `${g}, ${s.name}: ${fmt(v)}` });
-        const show = ev => { const b = svg.getBoundingClientRect(); tipShow(ev?.clientX ?? b.left + x, ev?.clientY ?? b.top + Y(v), g, series.map(ss => ({ color: ss.color, value: fmt(ss.values[gi]), name: ss.name }))); };
+        /* Incertidumbre a la vista. Sin esto, una versión con n = 61 y otra
+           con n = 4.000 se dibujan exactamente igual, y la comparación invita
+           a una conclusión que el intervalo desmiente. */
+        const ci = s.ci && s.ci[gi];
+        if (ci && Number.isFinite(ci[0]) && Number.isFinite(ci[1])) {
+          const cx = x + bw / 2, y1 = Y(ci[1]), y2 = Y(ci[0]);
+          svg.appendChild(S('line', { x1: cx, x2: cx, y1, y2, stroke: 'var(--ink-2)', 'stroke-width': 1.5 }));
+          [y1, y2].forEach(cy => svg.appendChild(S('line', {
+            x1: cx - 4, x2: cx + 4, y1: cy, y2: cy, stroke: 'var(--ink-2)', 'stroke-width': 1.5,
+          })));
+        }
+        const ariaCi = ci ? ', ' + t('IC 95 %') + ' ' + fmt(ci[0]) + ' – ' + fmt(ci[1]) : '';
+        const ariaBase = s.bases ? ', n ' + nf(s.bases[gi]) : '';
+        const hit = S('rect', { x: x - 1, y: pad.t, width: bw + 2, height: ih, class: 'hit cellhit', tabindex: 0, 'aria-label': `${g}, ${s.name}: ${fmt(v)}${ariaCi}${ariaBase}` });
+        const show = ev => {
+          const b = svg.getBoundingClientRect();
+          const rows = series.map(ss => ({ color: ss.color, value: fmt(ss.values[gi]), name: ss.name }));
+          if (ci) rows.push({ color: 'var(--ink-3)', value: fmt(ci[0]) + ' – ' + fmt(ci[1]), name: t('IC 95 %') });
+          if (s.bases) rows.push({ color: 'var(--ink-3)', value: nf(s.bases[gi]), name: t('valoraciones') });
+          tipShow(ev?.clientX ?? b.left + x, ev?.clientY ?? b.top + Y(v), g, rows);
+        };
         hit.addEventListener('pointermove', show); hit.addEventListener('pointerleave', tipHide);
         hit.addEventListener('focus', () => show()); hit.addEventListener('blur', tipHide);
         svg.appendChild(hit);
@@ -1494,6 +1517,16 @@ const I18N = {
       'Version',
     'Las valoraciones sin versión ({n} en el corte) quedan fuera: Google Play no la reporta en una parte de los envíos y su nota es sensiblemente peor, así que mezclarlas ensuciaría la comparación.':
       'Ratings with no version ({n} in this slice) are left out: Google Play does not report it on some submissions and their score is noticeably worse, so mixing them in would muddy the comparison.',
+    'Las valoraciones sin versión ({n} en el corte) quedan fuera: Google Play no la reporta en una parte de los envíos y su nota es sensiblemente peor, así que mezclarlas ensuciaría la comparación. El bigote es el intervalo de la media al 95 %, calculado con la t de Student sobre el reparto completo de estrellas; no es el de Wilson, que sirve para una proporción como el % de 1-2★ y no para una media. Cuando una versión concentra la mayor parte de la base, la línea de media del corte es casi esa misma versión: la comparación que informa es entre versiones, no contra la línea.':
+      'Ratings with no version ({n} in this slice) are left out: Google Play does not report it on some submissions and their score is noticeably worse, so mixing them in would muddy the comparison. The whisker is the 95 % confidence interval of the mean, computed with Student’s t over the full star distribution; it is not a Wilson interval, which applies to a proportion such as the share of 1-2★ ratings, not to a mean. When one version holds most of the base, the slice-average line is essentially that same version: the comparison that informs is between versions, not against the line.',
+    'versiones con n ≥ 60 · bigote = intervalo de la media al 95 % · la línea es la media del corte':
+      'versions with n ≥ 60 · whisker = 95 % confidence interval of the mean · the line is the slice average',
+    '{v} queda por debajo de la media del corte con certeza: {a} frente a {m}, con {n} valoraciones.':
+      '{v} sits below the slice average with certainty: {a} against {m}, on {n} ratings.',
+    'Ninguna versión con n ≥ 60 se separa de la media del corte con certeza: los intervalos se solapan.':
+      'No version with n ≥ 60 separates from the slice average with certainty: the intervals overlap.',
+    'n {n}':
+      'n {n}',
     'Dispositivos peores que la media, con certeza':
       'Devices worse than average, with certainty',
     '{a} de {b} modelos con n ≥ 30 cuyo intervalo de confianza al 95 % queda entero por encima del {p} global':
@@ -2045,6 +2078,32 @@ function wilson(k, n, z = 1.96) {
   const m = z * Math.sqrt(p * (1 - p) / n + z * z / (4 * n * n));
   return [(c - m) / den, (c + m) / den];
 }
+/* Intervalo de la nota MEDIA. NO es Wilson: Wilson vale para una proporción
+   —el % de 1-2★, que es lo que usa `dev-worse`— y aquí la barra es una media
+   de 1 a 5. Para una media el intervalo es el de la t de Student, y como
+   tenemos la distribución completa [n1..n5] la desviación típica sale exacta,
+   sin aproximar nada.
+   Se usa t y no z a propósito: con muestras pequeñas z se queda corto, y a
+   partir de n grande las dos convergen, así que un solo camino sirve para
+   todos los tamaños. */
+const T95 = [12.71, 4.30, 3.18, 2.78, 2.57, 2.45, 2.36, 2.31, 2.26, 2.23,
+             2.20, 2.18, 2.16, 2.14, 2.13, 2.12, 2.11, 2.10, 2.09];
+function tCrit(df) {
+  if (df < 1) return T95[0];
+  if (df <= T95.length) return T95[df - 1];
+  return 1.96 + 2.4 / df;        /* < 0,5 % de error a partir de df 20 */
+}
+function meanCI(a) {
+  const n = a[0] + a[1] + a[2] + a[3] + a[4];
+  if (n < 2) return null;        /* con n < 2 no hay dispersión que estimar */
+  const m = (a[0] + 2 * a[1] + 3 * a[2] + 4 * a[3] + 5 * a[4]) / n;
+  let ss = 0;
+  for (let k = 0; k < 5; k++) ss += a[k] * (k + 1 - m) * (k + 1 - m);
+  const se = Math.sqrt(ss / (n - 1)) / Math.sqrt(n);
+  if (!Number.isFinite(se)) return null;
+  const d = tCrit(n - 1) * se;
+  return [m - d, m + d];
+}
 /* lunes de la semana de una fecha YYYYMMDD */
 function weekOf(n) {
   const d = new Date(Date.UTC(Math.floor(n / 10000), Math.floor(n / 100) % 100 - 1, n % 100));
@@ -2275,23 +2334,40 @@ function renderRating(root) {
   /* --- versiones --- */
   g.appendChild(eyebrow(t('Por versión y por dispositivo'), 'eb-ver'));
   const byVer = bucketBy(ids, i => RD.vers[R_ver[i]]);
-  const verRows = [...byVer.entries()].map(([v, a]) => ({ v, s: statOf(a) }))
+  const verRows = [...byVer.entries()].map(([v, a]) => ({ v, s: statOf(a), ci: meanCI(a) }))
     .filter(r => r.s.n >= 60 && r.v !== '')
     .sort((a, b) => a.v.localeCompare(b.v, undefined, { numeric: true }));
   if (verRows.length) {
+    /* Titular calculado, con la misma guarda que `dev-worse`: una versión solo
+       se señala si su intervalo al 95 % queda ENTERO por debajo de la media del
+       corte. Sin esa guarda se persiguen versiones que solo parecen malas por
+       tener pocas valoraciones, que es justo lo que esta tarjeta hacía antes. */
+    const below = verRows.filter(r => r.ci && r.ci[1] < all.avg)
+      .sort((a, b) => a.s.avg - b.s.avg);
+    const verIns = below.length
+      ? t('{v} queda por debajo de la media del corte con certeza: {a} frente a {m}, con {n} valoraciones.',
+          { v: below[0].v, a: star(below[0].s.avg), m: star(all.avg), n: nf(below[0].s.n) })
+      : t('Ninguna versión con n ≥ 60 se separa de la media del corte con certeza: los intervalos se solapan.');
     g.appendChild(plotCard({
       key: 'ver', span: 'c6', title: t('Rating medio por versión de la app'),
-      sub: t('versiones con n ≥ 60 · la línea es la media del corte'),
+      sub: t('versiones con n ≥ 60 · bigote = intervalo de la media al 95 % · la línea es la media del corte'),
+      insight: verIns,
       draw: groupedCols({
-        groups: verRows.map(r => r.v),
-        series: [{ name: t('Rating medio'), color: 'var(--s1)', values: verRows.map(r => r.s.avg) }],
-        height: 232, fmt: v => nf(v, 1), refLine: all.avg, refLabel: t('media {m}', { m: star(all.avg) }),
+        groups: verRows.map(r => r.v + '\n' + t('n {n}', { n: nf(r.s.n) })),
+        series: [{
+          name: t('Rating medio'), color: 'var(--s1)',
+          values: verRows.map(r => r.s.avg),
+          ci: verRows.map(r => r.ci),
+          bases: verRows.map(r => r.s.n),
+        }],
+        height: 248, fmt: v => nf(v, 1), refLine: all.avg, refLabel: t('media {m}', { m: star(all.avg) }),
         alt: t('Rating medio por versión de la app'),
       }),
-      note: t('Las valoraciones sin versión ({n} en el corte) quedan fuera: Google Play no la reporta en una parte de los envíos y su nota es sensiblemente peor, así que mezclarlas ensuciaría la comparación.',
+      note: t('Las valoraciones sin versión ({n} en el corte) quedan fuera: Google Play no la reporta en una parte de los envíos y su nota es sensiblemente peor, así que mezclarlas ensuciaría la comparación. El bigote es el intervalo de la media al 95 %, calculado con la t de Student sobre el reparto completo de estrellas; no es el de Wilson, que sirve para una proporción como el % de 1-2★ y no para una media. Cuando una versión concentra la mayor parte de la base, la línea de media del corte es casi esa misma versión: la comparación que informa es entre versiones, no contra la línea.',
         { n: nf((byVer.get('') || BUCK()).reduce((x, y) => x + y, 0)) }),
-      tableFn: () => table([t('Versión'), 'n', t('Rating'), '1-2★'],
-        verRows.map(r => [r.v, nf(r.s.n), star(r.s.avg), rpct(r.s.bad)])),
+      tableFn: () => table([t('Versión'), 'n', t('Rating'), t('IC 95 %'), '1-2★'],
+        verRows.map(r => [r.v, nf(r.s.n), star(r.s.avg),
+          r.ci ? nf(r.ci[0], 2) + ' – ' + nf(r.ci[1], 2) : '—', rpct(r.s.bad)])),
     }));
   }
 
@@ -2507,36 +2583,6 @@ function renderRating(root) {
   }));
 
 
-  /* --- respuesta del equipo --- */
-  const repRows = [1, 2, 3, 4, 5].map(s => {
-    const sub = ids.filter(i => R_rat[i] === s);
-    const rep = sub.filter(i => R_lat[i] >= 0).length;
-    const wt = sub.filter(i => R_text[i] >= 0);
-    const repText = wt.filter(i => R_lat[i] >= 0).length;
-    return { s, n: sub.length, rep, rate: sub.length ? rep / sub.length * 100 : 0,
-             nText: wt.length, rateText: wt.length ? repText / wt.length * 100 : 0 };
-  });
-  const negT = repRows[0].nText + repRows[1].nText;
-  const negRep = Math.round((repRows[0].rateText * repRows[0].nText + repRows[1].rateText * repRows[1].nText) / (negT || 1));
-  const repIns = t('Se responde al {p} de las quejas escritas de 1-2★.', { p: rpct(negRep, 0) });
-  g.appendChild(plotCard({
-    key: 'reply', span: 'c6', title: t('Cobertura de respuesta del equipo'),
-    insight: repIns,
-    sub: t('sobre las valoraciones que traen texto, por nota'),
-    draw: barsH({
-      rows: repRows.slice().reverse().map((r, k) => ({
-        label: r.s + '★', value: r.rateText,
-        color: ORD[Math.min(k, ORD.length - 1)],
-        rows: [{ color: 'var(--deemph)', value: nf(r.nText), name: t('con texto') }],
-      })),
-      fmt: v => nf(v, 0) + ' %', labelW: 34, valW: 56, unit: t('respondidas'),
-      alt: t('Cobertura de respuesta del equipo') + '. ' + repIns,
-    }),
-    note: t('Solo se puede responder a lo que trae texto. En este corte llegan {n} notas de 1-2★ sin una palabra.',
-      { n: nf(repRows[0].n + repRows[1].n - repRows[0].nText - repRows[1].nText) }),
-    tableFn: () => table([t('Nota'), t('Valoraciones'), t('Con texto'), t('Respondidas (con texto)'), t('Respondidas (total)')],
-      repRows.slice().reverse().map(r => [r.s + '★', nf(r.n), nf(r.nText), rpct(r.rateText), rpct(r.rate)])),
-  }));
 
   g.appendChild(eyebrow(t('Interpretación'), 'eb-ctx'));
   g.appendChild(contextCard('rating'));
@@ -2810,61 +2856,6 @@ function renderReviews(root) {
     }));
   }
 
-  /* --- sentimiento x nota: la discrepancia --- */
-  g.appendChild(eyebrow(t('El texto frente a la estrella'), 'eb-text'));
-  const srRows = SENTS.map(x => ({
-    label: sentLabel(x.id),
-    values: [1, 2, 3, 4, 5].map(k => tAll.filter(ti => RD.rev[ti].s === x.id && R_rat[RD.rev[ti].n] === k).length),
-  }));
-  const mix45 = tAll.filter(ti => RD.rev[ti].s === 'mix' && R_rat[RD.rev[ti].n] >= 4).length;
-  const srIns = t('{n} reviews de 4★ o 5★ traen un texto mixto o una petición.', { n: nf(mix45) });
-  g.appendChild(plotCard({
-    key: 'sent-star', span: 'c6', title: t('Qué dice el texto y qué dice la estrella'),
-    insight: srIns,
-    sub: t('el sentimiento se calcula del texto, nunca de la nota: por eso el cruce informa'),
-    draw: heatmap({
-      rows: srRows, cols: ['1★', '2★', '3★', '4★', '5★'],
-      labelW: 118, rowH: 30, showValues: true, fmt: v => nf(v), unit: t('reviews'),
-      alt: t('Qué dice el texto y qué dice la estrella') + '. ' + srIns,
-    }),
-    legend: scaleLegend(0, Math.max(...srRows.flatMap(r => r.values)), v => nf(v)),
-    note: t('El sentimiento sale de un léxico aplicado al texto; la estrella la puso el usuario. Las celdas donde no coinciden son las que traen información.'),
-    tableFn: () => table([t('Sentimiento del texto'), '1★', '2★', '3★', '4★', '5★', t('Total')],
-      srRows.map(r => [r.label].concat(r.values.map(v => nf(v))).concat([nf(r.values.reduce((a, b) => a + b, 0))]))),
-  }));
-
-  /* --- fricción por familia de dispositivo, con guarda --- */
-  const famText = {}, famFric = {};
-  tAll.forEach(t => {
-    const f = FAMS[R_fam[RD.rev[t].n]];
-    famText[f] = (famText[f] || 0) + 1;
-    if (RD.rev[t].w) famFric[f] = (famFric[f] || 0) + 1;
-  });
-  const famRows2 = Object.keys(famText).filter(f => famText[f] >= 40)
-    .map(f => {
-      const ci = wilson(famFric[f] || 0, famText[f]);
-      return { f, n: famText[f], k: famFric[f] || 0, rate: (famFric[f] || 0) / famText[f] * 100,
-               lo: ci[0] * 100, hi: ci[1] * 100 };
-    }).sort((a, b) => b.rate - a.rate);
-  if (famRows2.length) {
-    g.appendChild(plotCard({
-      key: 'fam-fric', span: 'c6', title: t('Tasa de fricción por familia de dispositivo'),
-      sub: t('familias con al menos 40 reviews de texto en el corte'),
-      draw: barsH({
-        rows: famRows2.map(r => ({
-          label: famLabel(r.f), value: r.rate, ci: [r.lo, r.hi],
-          color: TRANSSION.indexOf(r.f) >= 0 ? 'var(--s3)' : 'var(--s1)',
-          rows: [{ color: 'var(--deemph)', value: t('IC95') + ' ' + nf(r.lo, 0) + '–' + nf(r.hi, 0) + ' %', name: '' },
-                 { color: 'var(--deemph)', value: nf(r.n), name: t('reviews') }],
-        })),
-        fmt: v => nf(v, 1) + ' %', labelW: 150, valW: 58, unit: t('con fricción'),
-        alt: t('Tasa de fricción por familia de dispositivo'),
-      }),
-      note: t('Los bigotes son el intervalo de confianza al 95 %. Si se solapan, la diferencia entre familias no es concluyente con este volumen de texto.'),
-      tableFn: () => table([t('Familia'), t('Reviews'), t('Con fricción'), t('Tasa'), t('IC 95 %')],
-        famRows2.map(r => [famLabel(r.f), nf(r.n), nf(r.k), rpct(r.rate), nf(r.lo, 0) + ' – ' + nf(r.hi, 0) + ' %'])),
-    }));
-  }
 
   /* --- tema x mes --- */
   const monKeys = [...new Set(ids.map(i => Math.floor(R_dayn[i] / 100)))].sort();
@@ -3190,8 +3181,10 @@ function briefReviews(L) {
   tis.forEach(ti => { sc[RD.rev[ti].s] = (sc[RD.rev[ti].s] || 0) + 1; });
   L.push('SENTIMIENTO DEL TEXTO (calculado del texto con un léxico, NO de la estrella): '
     + SENTS.map(x => x.label + ' ' + nf(sc[x.id] || 0)).join(', ') + '.');
-  const mix45 = tis.filter(ti => RD.rev[ti].s === 'mix' && R_rat[RD.rev[ti].n] >= 4).length;
-  L.push('Reviews de 4-5★ cuyo texto es mixto o pide algo: ' + nf(mix45) + '.');
+  /* El cruce sentimiento × estrella salió del panel, así que su cifra sale
+     también del brief: la regla es que aquí no viaja nada que no esté en
+     pantalla. El reparto de sentimiento se queda porque es la descomposición
+     del KPI «Balance de sentimiento», que sí se muestra. */
 
   /* Verbatims: el dato en crudo que está en la lista de la vista. Se manda una
      muestra corta, priorizando lo que trae señal, para que la lectura pueda
