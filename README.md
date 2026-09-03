@@ -85,12 +85,26 @@ son parte del diseño, no un adorno:
 - **El sentimiento sale del texto, nunca de la estrella**, para que cruzarlos informe.
 - **Corte vacío se dice, no se dibuja.**
 
-## Puerta de acceso
+## Dos capas de acceso, y lo que cada una protege
 
-Hay una pantalla de contraseña antes del panel. **Es un cierre de cortesía, no seguridad**:
-la página es un fichero estático, así que quien lea el código fuente ve lo que haya sin
-pasar por ella. La propia pantalla lo advierte. Para proteger datos de verdad hace falta
-autenticación en el servidor.
+**1. Restricción por IP (`middleware.js`).** Edge Middleware de Vercel: quien no venga de
+una IP autorizada recibe 403 **antes** de que se sirva una línea del HTML. Esta sí es una
+barrera de servidor. Falla cerrado (si no se puede determinar la IP, deniega) y la página
+de bloqueo muestra la IP detectada, porque una IP doméstica cambia y una conexión IPv6 no
+coincide con la IPv4 esperada. Para cambiar la lista sin commitear: variable de entorno
+`ALLOWED_IPS` en Vercel, IP separadas por comas.
+
+```bash
+osascript -l JavaScript tools/middleware_test.js
+```
+
+**2. Pantalla de contraseña (dentro de `index.html`).** **Es un cierre de cortesía, no
+seguridad**: la página es un fichero estático, así que quien lea el código fuente ve lo
+que haya sin pasar por ella. La propia pantalla lo advierte.
+
+**Lo que ninguna de las dos protege: este repositorio.** El middleware cubre la URL de
+Vercel; si el repositorio es público, cualquiera lee lo que haya en `index.html` desde
+GitHub. Por eso el repositorio va sin datos.
 
 ## Documentación
 
