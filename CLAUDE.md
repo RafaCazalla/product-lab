@@ -3,21 +3,23 @@
 Panel interno de la **voz del usuario en Google Play**, orientado a decisiones de
 CPO/CRO: la nota que ponen y lo que escriben.
 
-**Estado: v0.5.** Una sola página autónoma, sin build y sin dependencias. **Todo lo que
-muestra es dato real** (9.754 valoraciones, 710 con texto, 31 may – 14 ago 2026),
-incrustado en el propio HTML.
+**Estado: v0.6.** Una sola página autónoma, sin build y sin dependencias. **Todo lo que
+muestra es dato real**, incrustado en el propio HTML, y ahora de **dos fuentes**:
+9.754 valoraciones de Google Play (710 con texto, 31 may – 14 ago 2026) y 3.454
+respuestas de la encuesta de salida (10 jun – 14 sep 2026, España, Android).
 
 **El panel no interpreta por su cuenta.** Todo lo que se lee sin pulsar nada es
 aritmética sobre los datos. La interpretación la escribe Claude, y solo cuando se pulsa
 «Ejecutar contexto» (ver «Lectura de IA»).
 
-Tres pestañas, cada una con un cometido:
+Cuatro pestañas, cada una con un cometido:
 
 | Pestaña | Qué contesta |
 |---|---|
 | **Resumen** | Portada: las dos secciones resumidas y por dónde empezar. |
 | **Rating** | La nota: reparto, idioma, versión, dispositivo y calidad de la muestra. |
 | **Reviews** | El texto: embudo de la voz, temas con su signo, sentimiento y los verbatims en crudo. |
+| **Survey** | La encuesta de salida: de qué se queja quien ya ha dicho que la app no le gusta, y en qué se parece o no a lo que dice Play. |
 
 En v0.2 convivían estas vistas con seis pestañas de métricas de producto sintéticas
 (comportamiento, retención, embudos, segmentos). **Se eliminaron en v0.3**, junto con su
@@ -36,7 +38,13 @@ data/reviews.json             valoraciones reales ya clasificadas (copia legible
                               bloque que va incrustado en index.html)
 tools/reviews_build.py        CSV de Google Play -> JSON clasificado. Etiqueta tema y
                               sentimiento con un léxico multiidioma. Sin dependencias.
-tools/smoke.js                prueba de humo: renderiza las tres vistas bajo ~2.700
+tools/survey_build.py         CSV de encuesta -> JSON clasificado. Importa el
+                              clasificador de reviews_build: misma taxonomía, que es
+                              lo único que permite comparar las dos fuentes.
+datasurvey/                   CSV de origen de las encuestas (NO se publica: trae
+                              tokens de FCM, ver «Privacidad»)
+data/survey.json              respuestas clasificadas, sin identificadores
+tools/smoke.js                prueba de humo: renderiza las cuatro vistas bajo ~2.900
                               cortes, en los dos idiomas, y caza excepciones, cifras
                               degeneradas y cadenas sin traducir
 .claude/skills/               skill de criterio de visualización (data-visualization,
@@ -191,7 +199,7 @@ recorre las tres vistas en inglés y lista lo que falte**, listo para pegar.
 ### Antes de dar por bueno un cambio
 
 ```bash
-osascript -l JavaScript tools/smoke.js      # macOS, sin dependencias: ~2.700 renders
+osascript -l JavaScript tools/smoke.js      # macOS, sin dependencias: ~2.900 renders
 ```
 
 Ejecuta cada vista contra un DOM simulado, **en los dos idiomas**, y falla si aparece una
@@ -204,6 +212,15 @@ queda alguna cadena sin traducir. Además comprueba:
   pestaña funcionaba, y llamar a las vistas a mano no lo veía.
 - **El orden de los módulos**: claves únicas, pinza en todos, que un orden guardado se
   aplique y que una clave desconocida no pierda módulos.
+
+**`smoke.js` va casi entero dentro de dos literales de plantilla** (`SHIM` y `DRIVER`).
+Dentro de ellos **no puede haber un backtick ni un `${`**, ni siquiera en un comentario:
+un backtick cierra el literal antes de tiempo y el fichero deja de parsear con un error
+que apunta a una línea que no tiene nada que ver. Ha pasado dos veces.
+
+**Y el orden importa:** el barrido en inglés de una vista nueva tiene que ir **antes** de
+`var miss = Array.from(I18N_MISS)`. Detrás de esa foto, sus cadenas sin traducir no
+entran en el recuento y la prueba pasa en falso.
 
 El shim imita al navegador en lo que importa para cazar estos fallos: `querySelector`
 devuelve **`null`** para lo que no está o se ha desprendido del documento, `textContent`
@@ -321,16 +338,70 @@ Es el único origen de datos del panel. Su estado es `rstate`, y la barra de fil
 y tema. Los dos últimos solo filtran texto, así que `selectTab()` oculta esos controles
 (`.rev-only`) fuera de Reviews. `state` guarda **solo** la pestaña abierta.
 
+## La encuesta (pestaña Survey)
+
+Segunda fuente. Dos formatos previstos:
+
+1. **De salida** (`meta.kind = 'exit'`): se dispara tras que el usuario diga que la app
+   no le gusta. Es la que hay cargada.
+2. **Personalizada**, con varias preguntas: `meta.questions` y el campo `Pregunta` por
+   fila ya lo soportan, pero **no hay datos todavía** y la vista no pinta selector de
+   pregunta mientras solo haya una.
+
+**Las tres diferencias con Play, y ninguna se disimula:**
+
+- **No hay nota.** Una encuesta no tiene estrella, así que aquí **no existe el reparto
+  por signo** de Reviews. La muestra entera *es* el lado negativo. No inventes un
+  equivalente de `SIGNS` para esta vista.
+- **No hay denominador.** Se sabe quién contestó; no a cuánta gente se le enseñó. Por eso
+  la vista habla siempre de **composición** («de quien contesta, el 71,6 % menciona
+  publicidad») y **jamás de tasa** sobre la base de usuarios. La primera tarjeta dibuja
+  la cadena con las tres cajas que no se miden, en vez de esconderlo en una nota al pie.
+  **Si algún día llega el recuento de impresiones de la encuesta, esa es la tarjeta que
+  cambia**, y entonces sí hay tasa de respuesta.
+- **La muestra está seleccionada por el disparador.** Comparar su composición con la de
+  Play mide el instrumento tanto como el producto, y la tarjeta de comparación lo dice
+  en su nota. No se lee como un cambio en el tiempo.
+
+Además, **la versión de app está confundida con el tiempo** (6.4.0 concentra el 90 % de
+las respuestas porque era la vigente cuando más se disparó la encuesta) y **junio
+concentra el 73 %**, así que esta pestaña tampoco dibuja series temporales.
+
+**El clasificador se reutiliza, pero una etiqueta se renombra.** `praise` se escribió
+para reseñas, donde «mejor» es elogio; contestando a «qué podríamos mejorar» casi siempre
+es una petición. Se renombra a «Sin queja identificable» en `SURVEY_LABEL`, sin tocar el
+léxico: el límite es de encuadre de la pregunta, no de vocabulario, y parchear el léxico
+lo haría invisible.
+
+### Privacidad (no negociable)
+
+El CSV de origen trae una columna `Usuario` que **no es un id: es un token de registro de
+FCM**. Es una credencial viva —con ella se puede enviar una notificación a ese teléfono—
+y este panel se publica.
+
+- `survey_build.py` lo usa solo para contar personas únicas y repetidores, y **lo tira**:
+  no llega al JSON ni al HTML.
+- `datasurvey/` **no se publica**.
+- Comprobación de una línea antes de publicar: `grep -c APA91b index.html` tiene que dar
+  **0**.
+
 ### Regenerar los datos
 
 ```bash
 python3 tools/reviews_build.py <csv de Play> -o data/reviews.json --inline index.html
 python3 tools/reviews_build.py <csv de Play> --audit    # revisar el etiquetado a mano
+
+python3 tools/survey_build.py <csv de encuesta> -o data/survey.json --inline index.html
+python3 tools/survey_build.py <csv de encuesta> --audit
 ```
 
-`--inline` sustituye el bloque `const RD = …;` dentro de `index.html`, escapando `<` como
-`\u003c`: sin eso, una sola review que contenga `</script` tumba la página. **No pegues
-el JSON a mano.**
+`--inline` sustituye el bloque `const RD = …;` (o `const SD = …;`) dentro de
+`index.html`, escapando `<` como `\u003c`: sin eso, una sola review que contenga
+`</script` tumba la página. **No pegues el JSON a mano.**
+
+**El reemplazo va por corte de cadenas, nunca con `re.sub`.** En la cadena de reemplazo
+de `re.sub` las barras invertidas son escapes, y el JSON va lleno de `\u003c`: el bloque
+sale corrupto y la página no arranca. Se perdió un rato con esto; está así a propósito.
 
 ### Formato: columnar empaquetado
 

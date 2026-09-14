@@ -66,6 +66,39 @@ puede quedar una inflación pequeña del mismo tipo: está dicho en el pie de ca
 - **Gráfica de rating por idioma mes a mes**, con huecos y el aviso de muestra dentro
   (ver «La única gráfica temporal»).
 
+**v0.6** — Cuarta pestaña: **Survey**, la encuesta de salida. 3.454 respuestas del
+mercado español en Android (10 jun – 14 sep 2026), clasificadas con **el mismo léxico**
+que las reseñas, que es lo único que permite comparar las dos fuentes.
+
+Lo que enseña, y por qué está montado así:
+
+- **La publicidad es el 71,6 %** [IC95 69,8–73,3] de las 2.580 respuestas con contenido,
+  7,2 veces el segundo motivo. Es la señal más concentrada de todo el panel.
+- **La tarjeta de comparación entre fuentes** es la que justifica tener dos: publicidad
+  pesa 71,6 % en la encuesta y 20,9 % en las reseñas en español, y «sin queja» va del
+  4,0 % al 44,6 %. Esa diferencia **es del instrumento**, no del producto —Play recoge
+  también a quien está contento—, y la nota de la tarjeta lo dice.
+- **La primera tarjeta es el límite, no el hallazgo.** Dibuja la cadena
+  «vieron el aviso → dijeron que no les gusta → vieron la encuesta → contestaron» con
+  las tres primeras cajas en blanco, porque solo se mide la última. Sin denominador no
+  hay tasa, así que la vista habla de composición y nunca de «el X % de los usuarios».
+
+Y dos cosas que aparecieron al montarla:
+
+- **El CSV traía tokens de registro de FCM** en la columna `Usuario`. Es una credencial
+  viva. `survey_build.py` los usa para contar personas y los tira; no llegan al JSON.
+- **Había datos personales en el texto libre**: un correo y tres móviles. Se tachan en el
+  constructor —no a mano en el HTML— y quedan marcados como «[dato personal retirado]»,
+  para que al leer el verbatim se vea que falta algo en vez de parecer una frase cortada.
+  Las reseñas de Play se revisaron por lo mismo y están limpias: los correos que salen
+  son el `soporte@besoccer.com` de las plantillas del propio equipo.
+
+Pendiente de esta pestaña: **la tasa de respuesta**. Es su contra-métrica obligatoria —sin
+ella se puede «mejorar» el resultado enseñando la encuesta menos veces y nadie lo vería—
+y es la cifra que convierte esas tres cajas vacías en un embudo de verdad. También falta
+el **formato 2** (encuestas personalizadas con varias preguntas): el constructor y el JSON
+ya lo soportan, no hay datos.
+
 ## 1. Pipeline de ingesta continua
 
 Hoy `tools/reviews_build.py` parte de un CSV volcado a mano. Lo que falta:

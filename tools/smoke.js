@@ -221,6 +221,40 @@ langs.forEach(function (L) { sents.forEach(function (S) { topics.forEach(functio
   }); });
 }); }); });
 
+/* 2b. LA ENCUESTA. Dimensiones propias: no hay nota ni idioma, así que el
+       barrido es versión x Android x tema x ruido. Las combinaciones vacías
+       son normales (una versión con 4 respuestas cruzada con un tema raro) y
+       la vista tiene que decirlo, no dibujar ceros. */
+var sbase = JSON.parse(JSON.stringify(sstate));
+function setSCut(c) {
+  Object.keys(sbase).forEach(function (k) { sstate[k] = sbase[k]; });
+  Object.keys(c || {}).forEach(function (k) { sstate[k] = c[k]; });
+}
+var svers = ['all'].concat(SD.vers);
+var sdevs = ['all'].concat(SD.devs);
+var stopics = ['all'].concat(SD.topics.map(function (t) { return t.id; }));
+svers.forEach(function (V) { sdevs.forEach(function (D) {
+  setSCut({ ver: V, dev: D });
+  tryView('survey ' + V + '/' + D, renderSurvey);
+}); });
+stopics.forEach(function (T) { [true, false].forEach(function (C) {
+  setSCut({ topic: T, content: C });
+  tryView('survey tema ' + T + '/' + C, renderSurvey);
+  setSCut({ topic: T, content: C, ver: SD.vers[0] || 'all' });
+  tryView('survey tema+ver ' + T + '/' + C, renderSurvey);
+}); });
+/* ventanas de un solo día: el caso extremo de muestra mínima */
+SD.days.forEach(function (d, i) {
+  if (i % 7) return;                       /* uno de cada siete: 3.454 renders no aportan más */
+  var v = +d.replace(/-/g, '');
+  setSCut({ from: v, to: v });
+  tryView('survey día ' + d, renderSurvey);
+});
+/* rango imposible: desde después de hasta. Corte vacío, y se dice. */
+setSCut({ from: +SD.meta.to.replace(/-/g, ''), to: +SD.meta.from.replace(/-/g, '') });
+tryView('survey rango vacío', renderSurvey);
+setSCut({});
+
 /* 3. ventanas de un solo día: el caso extremo de muestra mínima */
 RD.days.forEach(function (d) {
   var v = +d.replace(/-/g, '');
@@ -275,6 +309,21 @@ topics.forEach(function (T) { sents.forEach(function (S) {
   tryView('EN rev ' + T + '/' + S, renderReviews);
 }); });
 setCut({});
+/* La encuesta, en inglés y antes de la foto de I18N_MISS. Es donde se cazan las
+   cadenas sin traducir de una pestaña nueva, que son la mitad de los fallos al
+   añadir una. Ojo al orden: recoger miss antes de este barrido deja la vista
+   nueva fuera del recuento y la prueba pasa en falso. */
+stopics.forEach(function (T) {
+  setSCut({ topic: T });
+  tryView('EN survey ' + T, renderSurvey);
+});
+sdevs.forEach(function (D) {
+  setSCut({ dev: D });
+  tryView('EN survey dev ' + D, renderSurvey);
+});
+setSCut({ from: +SD.meta.to.replace(/-/g, ''), to: +SD.meta.from.replace(/-/g, '') });
+tryView('EN survey rango vacío', renderSurvey);
+setSCut({});
 var miss = Array.from(I18N_MISS).sort();
 setLocale('es');
 
@@ -282,7 +331,7 @@ setLocale('es');
        guardado se aplique de verdad al repintar sin perder módulos. */
 cases++;
 (function () {
-  var views = { resumen: renderResumen, rating: renderRating, reviews: renderReviews };
+  var views = { resumen: renderResumen, rating: renderRating, reviews: renderReviews, survey: renderSurvey };
   Object.keys(views).forEach(function (v) {
     var h = new Node2('section');
     views[v](h);

@@ -6,6 +6,11 @@
 data/
 *.csv
 
+# CSV de encuestas: la columna "Usuario" es un token de registro de FCM, o sea
+# una credencial con la que se puede enviar una notificacion a ese telefono.
+# Lo cubre ya *.csv, pero va explicito para que se vea al leer el fichero.
+datasurvey/
+
 # Assets de marca en crudo (el logo va incrustado en index.html)
 *.png
 !docs/**/*.png
