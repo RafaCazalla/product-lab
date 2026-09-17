@@ -704,148 +704,6 @@ function stackedBarsH(cfg) {
   };
 }
 
-/* ---------- línea temporal con crosshair ----------
-   Acepta huecos: un `null` en `values` parte la línea en vez de inventar el
-   tramo. Hace falta porque hay meses en los que un idioma no reúne muestra
-   suficiente, y unir esos puntos dibujaría una tendencia que no existe.
-   `thin` marca los puntos con base pequeña: se pintan huecos, no macizos. */
-function lineChart(cfg) {
-  const fmt = cfg.fmt || (v => nf(v, 0));
-  return (w) => {
-    const h = cfg.height || 208;
-    const pad = { t: 12, r: cfg.padR ?? 58, b: 26, l: cfg.padL ?? 54 };
-    const iw = Math.max(60, w - pad.l - pad.r), ih = h - pad.t - pad.b;
-    const all = cfg.series.flatMap(s => s.values).filter(v => v !== null && Number.isFinite(v));
-    const lo = cfg.yZero ? 0 : (all.length ? Math.min(...all) : 0);
-    const hi = all.length ? Math.max(...all) : 1;
-    let ticks = niceTicks(lo - (cfg.yZero ? 0 : (hi - lo) * .12), hi + (hi - lo) * .08 || hi * 1.05, 4);
-    if (cfg.yMax !== undefined) {           /* nada por encima del techo real de la escala */
-      ticks = ticks.filter(t => t <= cfg.yMax);
-      if (ticks[ticks.length - 1] < cfg.yMax) ticks.push(cfg.yMax);
-    }
-    let y0 = ticks[0], y1 = ticks[ticks.length - 1];
-    /* Serie plana (el filtro fija una sola nota, o todos los meses coinciden):
-       el eje se quedaría con un tick y (v-y0)/(y1-y0) sería 0/0. Se abre un
-       punto hacia abajo para respetar el techo de la escala. */
-    if (!(y1 > y0)) { y0 = y0 - 1; ticks = [y0, y1]; }
-    const n = cfg.x.length;
-    const X = i => pad.l + (n === 1 ? iw / 2 : i * iw / (n - 1));
-    const Y = v => pad.t + ih - (v - y0) / (y1 - y0) * ih;
-    const svg = svgRoot(w, h, cfg.alt);
-
-    /* bandas de jornada — dato real del contexto: los picos son días de partido */
-    if (cfg.bands && cfg.bands.length) {
-      const bw = n > 1 ? iw / (n - 1) : iw;
-      cfg.bands.forEach(i => svg.appendChild(S('rect', {
-        x: clamp(X(i) - bw / 2, pad.l, pad.l + iw), y: pad.t,
-        width: Math.min(bw, pad.l + iw - clamp(X(i) - bw / 2, pad.l, pad.l + iw)),
-        height: ih, fill: 'var(--sunken)'
-      })));
-    }
-    ticks.forEach(t => {
-      svg.appendChild(gridLine(pad.l, pad.l + iw, Y(t)));
-      svg.appendChild(S('text', { x: pad.l - 8, y: Y(t) + 3.5, class: 'tick', 'text-anchor': 'end' }, fmt(t)));
-    });
-    svg.appendChild(S('line', { x1: pad.l, x2: pad.l + iw, y1: pad.t + ih, y2: pad.t + ih, stroke: 'var(--axis)', 'stroke-width': 1 }));
-
-    const every = Math.max(1, Math.ceil(n / (iw / 62)));
-    cfg.x.forEach((lb, i) => {
-      if (i % every && i !== n - 1) return;
-      svg.appendChild(S('text', { x: X(i), y: h - 8, class: 'tick', 'text-anchor': i === n - 1 ? 'end' : 'middle' }, lb.replace('sem. ', '')));
-    });
-
-    /* trazado por tramos: cada hueco corta la línea y empieza otra */
-    const pathOf = vals => {
-      let d = '', pen = false;
-      vals.forEach((v, i) => {
-        if (v === null || !Number.isFinite(v)) { pen = false; return; }
-        d += (pen ? 'L' : 'M') + X(i) + ' ' + Y(v);
-        pen = true;
-      });
-      return d;
-    };
-    cfg.series.forEach(s => {
-      const d = pathOf(s.values);
-      if (d) svg.appendChild(S('path', {
-        d, fill: 'none', stroke: s.color, 'stroke-width': 2,
-        'stroke-linejoin': 'round', 'stroke-linecap': 'round',
-      }));
-    });
-    /* un punto por dato: hueco cuando la base es pequeña */
-    cfg.series.forEach((s, si) => {
-      s.values.forEach((v, i) => {
-        if (v === null || !Number.isFinite(v)) return;
-        const isThin = cfg.thin && cfg.thin[si] && cfg.thin[si][i];
-        svg.appendChild(S('circle', {
-          cx: X(i), cy: Y(v), r: 4,
-          fill: isThin ? 'var(--card)' : s.color,
-          stroke: s.color, 'stroke-width': 2,
-        }));
-      });
-    });
-    /* etiqueta directa en el último punto CON dato de cada serie, evitando
-       colisiones: nunca un número en cada punto */
-    const lastOf = s => {
-      for (let i = s.values.length - 1; i >= 0; i--) {
-        const v = s.values[i];
-        if (v !== null && Number.isFinite(v)) return i;
-      }
-      return -1;
-    };
-    const ends = cfg.series.map(s => ({ s, i: lastOf(s) })).filter(e => e.i >= 0)
-      .map(e => ({ s: e.s, i: e.i, y: Y(e.s.values[e.i]) })).sort((a, b) => a.y - b.y);
-    const shown = [];
-    ends.forEach(e => {
-      if (!shown.some(o => Math.abs(o.y - e.y) < 14 && o.i === e.i)) shown.push(e);
-    });
-    shown.forEach(e => svg.appendChild(S('text', {
-      x: X(e.i) + 9, y: e.y + 4, class: 'dlabel' + (e.s.emph ? '' : ' sec'),
-    }, fmt(e.s.values[e.i]))));
-
-    /* capa de hover / teclado */
-    const cross = S('line', { y1: pad.t, y2: pad.t + ih, stroke: 'var(--axis)', 'stroke-width': 1, opacity: 0 });
-    svg.appendChild(cross);
-    const dots = cfg.series.map(s => { const c = S('circle', { r: 4.5, fill: s.color, stroke: 'var(--card)', 'stroke-width': 2, opacity: 0 }); svg.appendChild(c); return c; });
-    const hit = S('rect', { x: pad.l, y: pad.t, width: iw, height: ih, class: 'hit', tabindex: 0, role: 'application', 'aria-label': cfg.aria || cfg.alt || '' });
-    let idx = -1;
-    const showAt = (i, cx, cy) => {
-      idx = clamp(i, 0, n - 1);
-      cross.setAttribute('x1', X(idx)); cross.setAttribute('x2', X(idx)); cross.setAttribute('opacity', 1);
-      dots.forEach((d, k) => {
-        const v = cfg.series[k].values[idx];
-        if (v === null || !Number.isFinite(v)) { d.setAttribute('opacity', 0); return; }
-        d.setAttribute('cx', X(idx)); d.setAttribute('cy', Y(v)); d.setAttribute('opacity', 1);
-      });
-      const r = svg.getBoundingClientRect(), sc = r.width / w;
-      const first = cfg.series.find(s => s.values[idx] !== null && Number.isFinite(s.values[idx]));
-      tipShow(cx ?? r.left + X(idx) * sc,
-        cy ?? r.top + (first ? Y(first.values[idx]) : pad.t) * sc,
-        cfg.x[idx],
-        cfg.series.map((s, k) => ({
-          color: s.color,
-          value: (s.values[idx] === null || !Number.isFinite(s.values[idx]))
-            ? '—' : fmt(s.values[idx]),
-          name: s.name + (cfg.bases && cfg.bases[k] && cfg.bases[k][idx] !== undefined
-            ? ' · n=' + nf(cfg.bases[k][idx]) : ''),
-        })));
-    };
-    const clear = () => { cross.setAttribute('opacity', 0); dots.forEach(d => d.setAttribute('opacity', 0)); tipHide(); };
-    hit.addEventListener('pointermove', ev => {
-      const r = svg.getBoundingClientRect(), sc = r.width / w;
-      showAt(Math.round(((ev.clientX - r.left) / sc - pad.l) / (iw / Math.max(1, n - 1))), ev.clientX, ev.clientY);
-    });
-    hit.addEventListener('pointerleave', clear);
-    hit.addEventListener('focus', () => showAt(idx < 0 ? n - 1 : idx));
-    hit.addEventListener('blur', clear);
-    hit.addEventListener('keydown', ev => {
-      if (ev.key === 'ArrowRight') { showAt(idx + 1); ev.preventDefault(); }
-      if (ev.key === 'ArrowLeft') { showAt(idx - 1); ev.preventDefault(); }
-      if (ev.key === 'Escape') clear();
-    });
-    svg.appendChild(hit);
-    return svg;
-  };
-}
 
 /* ---------- barras horizontales (una serie, un color) ---------- */
 function barsH(cfg) {
@@ -1789,6 +1647,14 @@ const I18N = {
       'Which topics are most acidic',
     '% de menciones con 1-2★ · temas con 5 o más menciones · la línea es la media del corte':
       '% of mentions rated 1-2★ · topics with 5 or more mentions · the line is the slice average',
+    '% de las reviews del idioma que critican ese tema con 1-2★ · celda en blanco por debajo de {n} reviews':
+      'share of that language’s reviews criticising the topic with 1-2★ · cell left blank below {n} reviews',
+    'Ningún idioma reúne {n} reviews de 1-2★ en un mismo tema: no hay nada que comparar.':
+      'No language reaches {n} one- or two-star reviews on a single topic: there is nothing to compare.',
+    '{l}: {tema} ({p}, {k} reviews)':
+      '{l}: {tema} ({p}, {k} reviews)',
+    '{k} · base corta':
+      '{k} · base too small',
     'Qué duele en cada idioma':
       'What hurts in each language',
     '% de las reviews del idioma que critican ese tema con 1-2★':
@@ -1949,6 +1815,26 @@ const I18N = {
       'Writing is optional on Google Play: hence the drop at the first step. Without text, a rating can neither be answered nor diagnosed.',
     'El desglose por idioma, versión y familia de dispositivo está en «Rating».':
       'The breakdown by language, version and device family is under “Rating”.',
+    'La encuesta':
+      'The survey',
+    'Abrir Survey':
+      'Open Survey',
+    '{n} respuestas con contenido':
+      '{n} responses with content',
+    'Motivo dominante':
+      'Leading reason',
+    '{p} de quien contesta':
+      '{p} of those who answer',
+    'Ese motivo en Play (es)':
+      'That reason in Play (es)',
+    'sobre {n} reviews en español':
+      'out of {n} Spanish-language reviews',
+    'Respuestas sin contenido':
+      'Responses with no content',
+    'de {n} recibidas':
+      'of {n} received',
+    'Composición sobre quien contesta, nunca tasa sobre usuarios: no se sabe a cuánta gente se le enseñó la encuesta. La comparación con Play mide también el instrumento, no solo el producto.':
+      'Composition among those who answer, never a rate over the user base: we do not know how many people were shown the survey. The comparison with Play measures the instrument as well as the product.',
     'El texto es opcional en Play: el embudo completo, paso a paso, está en «Reviews».':
       'Text is optional on Play: the full funnel, step by step, is under “Reviews”.',
     'Evolución en el tiempo':
@@ -2119,7 +2005,6 @@ const rstate = {
      Por defecto la semana: con esta muestra es el grano donde dibujan los
      cuatro idiomas y hay 12 periodos en lugar de 4. El diario solo sostiene
      español y francés; el mensual aplana la forma. */
-  grain: 'week',
 };
 
 const isoOf = n => String(n).slice(0, 4) + '-' + String(n).slice(4, 6) + '-' + String(n).slice(6);
@@ -2524,146 +2409,6 @@ function renderRating(root) {
       ])),
   }));
 
-  /* --- evolución por idioma.
-         Tres decisiones que sostienen esta tarjeta:
-         · El eje lleva TODOS los periodos del rango, no solo los que tienen
-           datos. Si se colocaran los puntos por posición, un hueco de tres
-           semanas se vería igual que un día y el eje mentiría.
-         · Un punto necesita al menos MIN_POINT valoraciones. Por debajo, la
-           media de una nota es ruido: con n=10 el error típico ronda ±0,3 en
-           una escala de 1 a 5.
-         · Un solo eje (rating 1-5) y el color sigue al idioma en orden fijo,
-           no a su posición en la serie. --- */
-  g.appendChild(eyebrow(t('Evolución en el tiempo'), 'eb-time'));
-  const MIN_POINT = 30, THIN_POINT = 150;
-  const GRAINS = [
-    { id: 'day',   label: 'Día' },
-    { id: 'week',  label: 'Semana' },
-    { id: 'month', label: 'Mes' },
-  ];
-  const grain = GRAINS.some(x => x.id === rstate.grain) ? rstate.grain : 'week';
-
-  /* clave del periodo al que cae una fecha, y etiqueta para el eje */
-  const periodOf = (dayn, gr) => gr === 'month' ? Math.floor(dayn / 100)
-    : gr === 'week' ? numOf(weekOf(dayn)) : dayn;
-  const periodLabel = (key, gr) => gr === 'month' ? monthName(key % 100 - 1) : dmy(key);
-
-  /* Todos los periodos del rango, con datos o sin ellos. */
-  function periodsIn(gr, fromN, toN) {
-    const out = [];
-    const mk = n => new Date(Date.UTC(Math.floor(n / 10000), Math.floor(n / 100) % 100 - 1, n % 100));
-    const num = d2 => d2.getUTCFullYear() * 10000 + (d2.getUTCMonth() + 1) * 100 + d2.getUTCDate();
-    if (gr === 'month') {
-      let y = Math.floor(fromN / 10000), m = Math.floor(fromN / 100) % 100;
-      const ly = Math.floor(toN / 10000), lm = Math.floor(toN / 100) % 100;
-      while (y * 100 + m <= ly * 100 + lm) {
-        out.push(y * 100 + m);
-        m++; if (m > 12) { m = 1; y++; }
-      }
-      return out;
-    }
-    let d2 = mk(fromN);
-    if (gr === 'week') d2 = mk(numOf(weekOf(fromN)));
-    const end = mk(toN);
-    while (d2 <= end) {
-      out.push(num(d2));
-      d2.setUTCDate(d2.getUTCDate() + (gr === 'week' ? 7 : 1));
-    }
-    return out;
-  }
-
-  const evoIds = rSel({ lang: 1 });
-  /* Un idioma entra si tiene volumen para dar al menos dos puntos dibujables. */
-  const evoLangs = TOP_LANGS.filter(l => {
-    const mine = evoIds.filter(i => RD.langs[R_lang[i]] === l);
-    if (mine.length < MIN_POINT * 2) return false;
-    const per = {};
-    mine.forEach(i => { const k = periodOf(R_dayn[i], grain); per[k] = (per[k] || 0) + 1; });
-    return Object.keys(per).filter(k => per[k] >= MIN_POINT).length >= 2;
-  });
-  const oneStar = /^[1-5]$/.test(rstate.rating);
-  const keys = evoIds.length ? periodsIn(grain, rstate.from, rstate.to) : [];
-
-  if (keys.length >= 2 && evoLangs.length && !oneStar) {
-    const COLS = ['var(--s1)', 'var(--s2)', 'var(--s3)', 'var(--s4)'];
-    const cell = {};
-    evoIds.forEach(i => {
-      const l = RD.langs[R_lang[i]];
-      if (evoLangs.indexOf(l) < 0) return;
-      const k = l + '|' + periodOf(R_dayn[i], grain);
-      (cell[k] = cell[k] || []).push(R_rat[i]);
-    });
-    const bases = evoLangs.map(l => keys.map(k => (cell[l + '|' + k] || []).length));
-    const evo = evoLangs.map((l, k) => ({
-      name: langName(l), color: COLS[k % COLS.length], emph: k === 0,
-      values: keys.map((key, j) => {
-        const a = cell[l + '|' + key];
-        return a && a.length >= MIN_POINT ? a.reduce((x, y) => x + y, 0) / a.length : null;
-      }),
-    }));
-    const thin = evoLangs.map((l, k) => keys.map((key, j) => bases[k][j] < THIN_POINT));
-    const drawn = evo.reduce((a, sr) => a + sr.values.filter(v => v !== null).length, 0);
-
-    /* El aviso concreto: el mayor salto entre puntos consecutivos DIBUJADOS,
-       con el cambio de base debajo, que es lo que suele explicarlo. */
-    let jump = null;
-    evo.forEach((sr, k) => {
-      let prev = -1;
-      for (let j = 0; j < keys.length; j++) {
-        if (sr.values[j] === null) continue;
-        if (prev >= 0) {
-          const d = Math.abs(sr.values[j] - sr.values[prev]);
-          if (d >= 0.25 && (!jump || d > jump.d)) {
-            jump = { d, l: sr.name, va: sr.values[prev], vb: sr.values[j],
-                     from: keys[prev], to: keys[j], na: bases[k][prev], nb: bases[k][j] };
-          }
-        }
-        prev = j;
-      }
-    });
-    const evoIns = jump
-      ? t('{l} pasa de {a} a {b} entre {ma} y {mb}, pero su base pasa de {na} a {nb} valoraciones.', {
-          l: jump.l, a: star(jump.va), b: star(jump.vb),
-          ma: periodLabel(jump.from, grain), mb: periodLabel(jump.to, grain),
-          na: nf(jump.na), nb: nf(jump.nb) })
-      : t('Ningún idioma se mueve más de 0,25 puntos entre puntos consecutivos.');
-
-    /* selector de grano: el mismo dato a tres resoluciones */
-    const gsel = E('div');
-    gsel.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap';
-    GRAINS.forEach(x => {
-      const b = E('button', 'mini', t(x.label));
-      b.type = 'button';
-      b.setAttribute('aria-pressed', String(x.id === grain));
-      b.addEventListener('click', () => { rstate.grain = x.id; renderActive(); });
-      gsel.appendChild(b);
-    });
-
-    const titulo = grain === 'day' ? t('Rating por idioma, día a día')
-      : grain === 'week' ? t('Rating por idioma, semana a semana')
-      : t('Rating por idioma, mes a mes');
-    g.appendChild(plotCard({
-      key: 'evo', span: 'c12', title: titulo,
-      sub: t('{n} puntos dibujados de {total} posibles · hueco donde el periodo no llega a {min} valoraciones · punto hueco = base menor de {thin}',
-        { n: nf(drawn), total: nf(keys.length * evoLangs.length), min: MIN_POINT, thin: THIN_POINT }),
-      insight: evoIns,
-      extra: gsel,
-      legend: legend(evo.map(x => ({ color: x.color, name: x.name })), 'line'),
-      draw: lineChart({
-        x: keys.map(k => periodLabel(k, grain)),
-        series: evo, bases, thin, bands: [],
-        fmt: v => nf(v, 2), height: 300, padR: 66, yMax: 5,
-        alt: titulo + '. ' + evoIns,
-      }),
-      note: t('El eje lleva todos los {gr} del rango, también los que no tienen datos: así un hueco de varias semanas no se ve como un día. La recolección llegó en {k} lotes y se concentra en la primera quincena de cada mes, así que dos periodos contiguos NO son muestras comparables. Con el grano diario hay idiomas que casi no dibujan porque no reúnen {min} valoraciones al día: eso es la muestra, no un problema del panel.',
-        { gr: grain === 'day' ? t('días') : grain === 'week' ? t('semanas') : t('meses'),
-          k: RD.meta.batches.length, min: MIN_POINT }),
-      tableFn: () => table([t('Periodo')].concat(evo.map(x => x.name)).concat(evo.map(x => x.name + ' · n')),
-        keys.map((k, j) => [periodLabel(k, grain)]
-          .concat(evo.map(x => x.values[j] === null ? '—' : star(x.values[j])))
-          .concat(bases.map(b => nf(b[j]))))),
-    }));
-  }
 
   /* --- cobertura de la muestra: el aviso honesto --- */
   g.appendChild(eyebrow(t('Calidad de la muestra'), 'eb-sample'));
@@ -2937,12 +2682,26 @@ function renderReviews(root) {
     langBase[l] = (langBase[l] || 0) + 1;
   });
   const cols = TOP_LANGS.filter(l => (langBase[l] || 0) >= 30);
-  const topTopics = tOrder.filter(x => tCount[x] >= 4).slice(0, 8);
+  /* Umbral POR CELDA, no solo por columna. El denominador (las reviews del
+     idioma) pasa de sobra, pero el numerador de casi todas las celdas es de
+     una cifra: pintar «1,8 %» sobre 2 reviews es precisión inventada. Con
+     MIN_CELL la celda se queda en blanco, que es la regla de esta capa: sin
+     base suficiente no se dibuja, y el hueco dice lo que hay. */
+  const MIN_CELL = 5;
+  const cellN = {};
+  const topicsAll = tOrder.filter(x => tCount[x] >= 4).slice(0, 8);
+  topicsAll.forEach(x => cols.forEach(l => {
+    cellN[x + '|' + l] = negAll.filter(ti =>
+      RD.langs[R_lang[RD.rev[ti].n]] === l && RD.rev[ti].g.indexOf(x) >= 0).length;
+  }));
+  /* Una fila sin ninguna celda que pase el umbral no aporta: sería una fila
+     entera en blanco ocupando sitio. */
+  const topTopics = topicsAll.filter(x => cols.some(l => cellN[x + '|' + l] >= MIN_CELL));
   const tlRows = topTopics.map(x => ({
     label: topicLabel(x),
     values: cols.map(l => {
-      const n = negAll.filter(ti => RD.langs[R_lang[RD.rev[ti].n]] === l && RD.rev[ti].g.indexOf(x) >= 0).length;
-      return langBase[l] ? n / langBase[l] * 100 : null;
+      const n = cellN[x + '|' + l];
+      return (langBase[l] && n >= MIN_CELL) ? n / langBase[l] * 100 : null;
     }),
   }));
   if (cols.length) {
@@ -2951,17 +2710,20 @@ function renderReviews(root) {
       const cnt = {};
       negAll.filter(ti => RD.langs[R_lang[RD.rev[ti].n]] === l)
         .forEach(ti => RD.rev[ti].g.forEach(g2 => { if (g2 !== 'praise') cnt[g2] = (cnt[g2] || 0) + 1; }));
-      const top = Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a])[0];
-      return top ? { l, top, p: cnt[top] / langBase[l] * 100 } : null;
+      /* el titular tampoco puede apoyarse en una celda que la tarjeta no
+         dibuja: mismo umbral aquí que en el mapa */
+      const top = Object.keys(cnt).filter(g2 => cnt[g2] >= MIN_CELL)
+        .sort((a, b) => cnt[b] - cnt[a])[0];
+      return top ? { l, top, k: cnt[top], p: cnt[top] / langBase[l] * 100 } : null;
     }).filter(Boolean);
     const langTopIns = perLang.length
-      ? perLang.map(x => t('{l}: {tema} ({p})',
-          { l: langName(x.l), tema: topicLabel(x.top), p: rpct(x.p, 1) })).join(' · ')
-      : '';
+      ? perLang.map(x => t('{l}: {tema} ({p}, {k} reviews)',
+          { l: langName(x.l), tema: topicLabel(x.top), p: rpct(x.p, 1), k: nf(x.k) })).join(' · ')
+      : t('Ningún idioma reúne {n} reviews de 1-2★ en un mismo tema: no hay nada que comparar.', { n: MIN_CELL });
     g.appendChild(plotCard({
       key: 'lang-topics', span: 'c6', title: t('Qué duele en cada idioma'),
       insight: langTopIns,
-      sub: t('% de las reviews del idioma que critican ese tema con 1-2★'),
+      sub: t('% de las reviews del idioma que critican ese tema con 1-2★ · celda en blanco por debajo de {n} reviews', { n: MIN_CELL }),
       draw: heatmap({
         rows: tlRows, cols: cols.map(l => langName(l) + ' (' + nf(langBase[l]) + ')'),
         labelW: 178, rowH: 26, showValues: true, fmt: v => nf(v, 1), unit: t('% del idioma'),
@@ -2969,42 +2731,19 @@ function renderReviews(root) {
       }),
       legend: scaleLegend(0, Math.max(...tlRows.flatMap(r => r.values.filter(v => v !== null)), 1), v => nf(v, 0) + ' %'),
       note: t('El numerador son reviews de 1-2★ que mencionan el tema; el denominador, todas las reviews de ese idioma. Se normaliza por idioma y no por el total global: si no, el español taparía todo por volumen. Entre paréntesis, la base de cada columna.'),
+      /* La tabla sí enseña el recuento de TODAS las celdas, incluidas las que
+         el mapa deja en blanco: el hueco del mapa evita leer una tasa que no
+         se sostiene, pero el dato en crudo tiene que poder auditarse. */
       tableFn: () => table([t('Tema')].concat(cols.map(l => langName(l) + ' (n=' + nf(langBase[l]) + ')')),
-        tlRows.map(r => [r.label].concat(r.values.map(v => v === null ? '—' : rpct(v))))),
+        topicsAll.map(x => [topicLabel(x)].concat(cols.map(l => {
+          const k = cellN[x + '|' + l];
+          return k >= MIN_CELL ? rpct(k / langBase[l] * 100, 1) + ' (' + nf(k) + ')'
+            : t('{k} · base corta', { k: nf(k) });
+        })))),
     }));
   }
 
 
-  /* --- tema x mes --- */
-  const monKeys = [...new Set(ids.map(i => Math.floor(R_dayn[i] / 100)))].sort();
-  const monBase = {};
-  tAll.forEach(t => {
-    const m = Math.floor(R_dayn[RD.rev[t].n] / 100);
-    monBase[m] = (monBase[m] || 0) + 1;
-  });
-  const mCols = monKeys.filter(m => (monBase[m] || 0) >= 40);
-  if (mCols.length >= 2) {
-    const tmRows = topTopics.map(x => ({
-      label: topicLabel(x),
-      values: mCols.map(m => {
-        const n = negAll.filter(ti => Math.floor(R_dayn[RD.rev[ti].n] / 100) === m && RD.rev[ti].g.indexOf(x) >= 0).length;
-        return monBase[m] ? n / monBase[m] * 100 : null;
-      }),
-    }));
-    g.appendChild(plotCard({
-      key: 'topic-month', span: 'c6', title: t('Cómo se mueve cada tema por mes'),
-      sub: t('% de las reviews del mes que critican ese tema con 1-2★'),
-      draw: heatmap({
-        rows: tmRows, cols: mCols.map(m => monthName(m % 100 - 1) + ' (' + nf(monBase[m]) + ')'),
-        labelW: 178, rowH: 26, showValues: true, fmt: v => nf(v, 1), unit: t('% del mes'),
-        alt: t('Cómo se mueve cada tema por mes'),
-      }),
-      legend: scaleLegend(0, Math.max(...tmRows.flatMap(r => r.values.filter(v => v !== null)), 1), v => nf(v, 0) + ' %'),
-      note: t('Por mes y no por semana a propósito: la recolección vino en lotes irregulares y una serie semanal mostraría el calendario del volcado, no el comportamiento del usuario. Aun así, la comparación entre meses es indicativa, no una tendencia medida.'),
-      tableFn: () => table([t('Tema')].concat(mCols.map(m => monthName(m % 100 - 1) + ' (n=' + nf(monBase[m]) + ')')),
-        tmRows.map(r => [r.label].concat(r.values.map(v => v === null ? '—' : rpct(v))))),
-    }));
-  }
 
   /* --- verbatims --- */
   g.appendChild(eyebrow(t('Las reviews, una por una'), 'eb-verb'));
@@ -3582,7 +3321,7 @@ function renderResumen(root) {
   });
 
   g.appendChild(realModule({
-    key: 'm-rating', span: 'c6', tab: 'rating', cta: t('Abrir Rating'),
+    key: 'm-rating', span: 'c4', tab: 'rating', cta: t('Abrir Rating'),
     title: t('La nota'), sub: t('{n} valoraciones', { n: nf(rAll.n) }) + ' · ' + rCutLabel(),
     tiles: [
       { label: t('Rating medio'), value: star(rAll.avg) + ' / 5', foot: t('{p} son 5★', { p: rpct(rAll.top) }) },
@@ -3592,7 +3331,7 @@ function renderResumen(root) {
     note: t('El desglose por idioma, versión y familia de dispositivo está en «Rating».'),
   }));
   g.appendChild(realModule({
-    key: 'm-reviews', span: 'c6', tab: 'reviews', cta: t('Abrir Reviews'),
+    key: 'm-reviews', span: 'c4', tab: 'reviews', cta: t('Abrir Reviews'),
     title: t('La voz'),
     sub: t('{n} traen texto · el {p} del corte',
       { n: nf(tis.length), p: rpct(rAll.n ? tis.length / rAll.n * 100 : 0, 1) }),
@@ -3603,6 +3342,34 @@ function renderResumen(root) {
         foot: topFric ? t('{n} menciones', { n: nf(fricCount[topFric]) }) : t('sin temas en el corte') },
     ],
     note: t('El texto es opcional en Play: el embudo completo, paso a paso, está en «Reviews».'),
+  }));
+
+  /* --- la encuesta: segunda fuente, y la única comparación entre instrumentos
+         que hay en el panel. Estaba ausente de la portada, que es la puerta de
+         entrada: una pestaña con 3.454 respuestas no puede no aparecer aquí.
+         Usa el corte de la encuesta (`sSel`), no el de Play: son dos filtros
+         distintos y mezclarlos haría que la portada discutiera con la pestaña. */
+  const sAll = sSel('content');
+  const sTxt = sAll.filter(i => SD.r[i].c);
+  const sCnt = {};
+  sTxt.forEach(i => (SD.r[i].g || []).forEach(x => { sCnt[x] = (sCnt[x] || 0) + 1; }));
+  const sTop = Object.keys(sCnt).sort((a, b) => sCnt[b] - sCnt[a])[0];
+  const sRv = sReviewCount();
+  g.appendChild(realModule({
+    key: 'm-survey', span: 'c4', tab: 'survey', cta: t('Abrir Survey'),
+    title: t('La encuesta'),
+    sub: t('{n} respuestas con contenido', { n: nf(sTxt.length) }) + ' · ' + sCutLabel(),
+    tiles: [
+      { label: t('Motivo dominante'), value: sTop ? sTopicLabel(sTop) : '—',
+        foot: sTop ? t('{p} de quien contesta', { p: rpct(sCnt[sTop] / sTxt.length * 100, 1) })
+                   : t('sin temas en el corte') },
+      { label: t('Ese motivo en Play (es)'),
+        value: (sTop && sRv.n) ? rpct((sRv.c[sTop] || 0) / sRv.n * 100, 1) : '—',
+        foot: sRv.n ? t('sobre {n} reviews en español', { n: nf(sRv.n) }) : t('sin reviews en el corte') },
+      { label: t('Respuestas sin contenido'), value: nf(sAll.length - sTxt.length),
+        foot: t('de {n} recibidas', { n: nf(sAll.length) }) },
+    ],
+    note: t('Composición sobre quien contesta, nunca tasa sobre usuarios: no se sabe a cuánta gente se le enseñó la encuesta. La comparación con Play mide también el instrumento, no solo el producto.'),
   }));
 
   g.appendChild(eyebrow(t('Interpretación'), 'eb-ctx'));
@@ -3975,39 +3742,6 @@ function renderSurvey(root) {
     }));
   }
 
-  /* ---- motivos que aparecen juntos ---- */
-  const pairs = {};
-  ids.forEach(i => {
-    const gg = (SD.r[i].g || []).filter(x => x !== 'praise').slice().sort();
-    for (let a = 0; a < gg.length; a++)
-      for (let b = a + 1; b < gg.length; b++) {
-        const k = gg[a] + '|' + gg[b];
-        pairs[k] = (pairs[k] || 0) + 1;
-      }
-  });
-  const pk = Object.keys(pairs).sort((a, b) => pairs[b] - pairs[a]).slice(0, 6);
-  if (pk.length) {
-    g.appendChild(plotCard({
-      span: 'c6', key: 'pairs',
-      title: t('Motivos que aparecen juntos'),
-      sub: t('respuestas que mencionan los dos temas'),
-      insight: t('{n} respuestas mencionan {a} y {b} en la misma frase', {
-        n: nf(pairs[pk[0]]),
-        a: sTopicLabel(pk[0].split('|')[0]), b: sTopicLabel(pk[0].split('|')[1]),
-      }),
-      draw: barsH({
-        rows: pk.map(k => ({
-          label: k.split('|').map(x => sTopicLabel(x)).join(' + '),
-          value: pairs[k], color: 'var(--s4)',
-        })),
-        labelW: 210, valW: 48, rowH: 26,
-        alt: t('Pares de motivos citados en la misma respuesta'),
-      }),
-      tableFn: () => table([t('Par de motivos'), t('Respuestas')],
-        pk.map(k => [k.split('|').map(x => sTopicLabel(x)).join(' + '), nf(pairs[k])])),
-      note: t('Un par frecuente sugiere que las dos cosas se viven como un mismo problema, no como dos.'),
-    }));
-  }
 
   /* ---- publicidad por versión de Android ---- */
   const byDev = {};
@@ -4300,7 +4034,7 @@ $('#r-order').addEventListener('click', () => {
 $('#r-reset').addEventListener('click', () => {
   Object.assign(rstate, { from: D_FROM, to: D_TO, lang: 'all', fam: 'all', rating: 'all',
                           sent: 'all', topic: 'all', content: true, fric: false, sort: 'recent',
-                          limit: 40, grain: 'week' });
+                          limit: 40 });
   rFrom.value = isoOf(D_FROM); rTo.value = isoOf(D_TO);
   rLang.value = 'all'; rFam.value = 'all'; rSent.value = 'all'; rTopic.value = 'all';
   rRating.value = 'all';

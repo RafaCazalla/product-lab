@@ -3,7 +3,7 @@
 Panel interno de la **voz del usuario en Google Play**, orientado a decisiones de
 CPO/CRO: la nota que ponen y lo que escriben.
 
-**Estado: v0.6.** Una sola página autónoma, sin build y sin dependencias. **Todo lo que
+**Estado: v0.7.** Una sola página autónoma, sin build y sin dependencias. **Todo lo que
 muestra es dato real**, incrustado en el propio HTML, y ahora de **dos fuentes**:
 9.754 valoraciones de Google Play (710 con texto, 31 may – 14 ago 2026) y 3.454
 respuestas de la encuesta de salida (10 jun – 14 sep 2026, España, Android).
@@ -127,32 +127,36 @@ Reglas de esta parte:
 - La lectura sale marcada como escrita por Claude, con la advertencia de que **si una
   cifra no cuadra, manda la tarjeta**.
 
-## La única gráfica temporal
+## El panel ya no dibuja el tiempo
 
-`Rating por idioma, mes a mes` es la única tarjeta que dibuja el tiempo, y existe porque
-se pidió explícitamente. Lo que la hace defendible:
+**No hay ninguna gráfica temporal, y es a propósito.** Hasta v0.6 hubo dos —rating por
+idioma con selector de grano, y temas por mes— y las dos se retiraron en v0.7 por la misma
+razón: **medían el calendario del volcado, no el producto**.
 
-- **Grano seleccionable (día · semana · mes), por defecto semana**, con el mismo umbral
-  en los tres: un punto necesita `MIN_POINT` (30) valoraciones o no se dibuja. La
-  recolección llegó en 9 lotes y se concentra en la primera quincena de cada mes (julio:
-  4.152 valoraciones en la primera, 6 en la segunda), así que dos periodos contiguos no
-  son muestras comparables y la nota lo dice.
-- **El eje lleva TODOS los periodos del rango**, también los vacíos. Colocar los puntos
-  por posición hacía que un hueco de tres semanas se viera igual que un día: el eje
-  mentía sobre el tiempo. `lineChart` acepta `null` y parte la línea.
-- **La tarjeta declara cuántos puntos dibuja de cuántos posibles.** Con grano diario son
-  64 de 304: la limitación se ve en vez de disimularse con puntos que no sostiene nadie.
-- **`lineChart` acepta huecos**: un `null` parte la línea en vez de inventar el tramo.
-  Un mes que no llega a 60 valoraciones para un idioma no se dibuja.
-- **Punto hueco cuando la base es menor de 300**, y la base va en el tooltip y en la
-  tabla, columna a columna.
-- **El titular calculado avisa del riesgo**: busca el mayor salto entre meses
-  consecutivos y lo enseña **junto al cambio de base** que lo acompaña. Con estos datos
-  sale que el español pasa de 3,69 a 4,75 entre junio y julio mientras su base pasa de 90
-  a 4.158 valoraciones: casi con seguridad es la muestra, no el producto.
+La recolección de Play llegó en **9 lotes** de cobertura muy desigual, concentrados en la
+primera quincena de cada mes (julio: 4.152 valoraciones en la primera quincena, 6 en la
+segunda). Dos periodos contiguos no son muestras comparables, así que cualquier subida o
+bajada entre ellos es, antes que nada, el lote. La tarjeta de rating por idioma llegó a
+tener un titular calculado que decía justo eso —el español pasaba de 3,69 a 4,75 mientras
+su base pasaba de 90 a 4.158 valoraciones—: una tarjeta cuyo mejor titular posible es
+«no te creas esta tarjeta» no merece el ancho que ocupa.
 
-Si algún día la ingesta es diaria, esta tarjeta puede bajar a semanas y quitar los
-huecos. Hasta entonces, **no añadas más gráficas de tiempo**.
+La encuesta tiene el mismo problema por su lado: **junio concentra el 76 %** de las
+respuestas.
+
+Lo que queda en su lugar es honesto y suficiente:
+
+- **`cov`** (Rating) y **`wave`** (Survey) enseñan la cobertura de la muestra por periodo.
+  Son tarjetas de método: dicen cuándo NO se puede comparar.
+- **`ver`** (Rating) compara versiones, que es la dimensión con la que sí se atribuye un
+  cambio a una release — con su intervalo de confianza, para no confundir una versión con
+  poca base con una versión mala.
+
+**No añadas gráficas de tiempo.** Se desbloquean con dos cosas, y hasta que lleguen las
+dos la respuesta es no: **ingesta continua** en vez de lotes, y **fechas reales de
+publicación** de cada versión desde Play Console. El detalle de por qué, con los números,
+está en `docs/encargo-v0.6.md`.
+
 
 ## Criterio de visualización
 
@@ -166,8 +170,10 @@ criterio, y de ahí salieron tres cosas que faltaban:
 - **Titular calculado** (`insight` en `plotCard`): la skill pide que el título diga el
   hallazgo, no la categoría. Aquí el hallazgo se **calcula del corte** y se rehace con
   cada filtro, así que sigue siendo aritmética y no opinión.
-- **Incertidumbre a la vista** (`ci: [lo, hi]` en `barsH`): bigotes del intervalo de
-  Wilson. Antes el intervalo solo estaba en el tooltip y en la tabla, y una barra sola
+- **Incertidumbre a la vista** (`ci: [lo, hi]` en `barsH` y en `groupedCols`): bigotes
+  del intervalo. **Wilson para proporciones** (el % de 1-2★ de un modelo) y **la t de
+  Student para medias** (`meanCI()`, la nota media de una versión). No son
+  intercambiables y el código lo dice donde se definen. Antes el intervalo solo estaba en el tooltip y en la tabla, y una barra sola
   invita a conclusiones que el intervalo desmiente.
 - **Texto alternativo por gráfica** (`alt` en las primitivas): un `role="img"` sin nombre
   accesible era un hueco silencioso. Ahora la gráfica entera se describe con su hallazgo.
@@ -317,8 +323,9 @@ El fichero va en bloques `<script>` en este orden, y conviene mantenerlo así:
    `S()` (SVG), `E()`, tooltip compartido, `mount()/unmount()` + `ResizeObserver`.
 2. **Modelo de datos** — `PLATS`, `SEGS`, `MARKETS`, `BASE`, `state`, `key()`,
    `metric(name)`, `series(name, {offset})`, `activeBase()`, `deltaOf(name)`.
-3. **Primitivas de gráfica** — `lineChart`, `sparkline`, `barsH`, `stackedRows`,
-   `heatmap`, `funnel`, `dumbbell`, `diverging`, `groupedCols`, `legend`, `table`, `meterCell`.
+3. **Primitivas de gráfica** — `barsH`, `stackedBarsH`, `heatmap`, `funnel`,
+   `diverging`, `groupedCols`, `legend`, `table`. `lineChart` se retiró en v0.7 con la
+   última gráfica temporal: era su único consumidor.
 4. **Componentes de tarjeta** — `card`, `head`, `plotCard` (incluye la vista de tabla),
    `kpiTile`, `readCard`, `eyebrow`.
 5. **Derivadas por corte** — `sectionMix`, `screenRows`, `featureRows`, `cohorts`,
@@ -439,14 +446,21 @@ Son la razón de que el panel no afirme más de lo que el dato sostiene:
 
 - **Nada de tendencias semanales.** La recolección llegó en 9 lotes con cobertura
   desigual (de 6 a 4.500 valoraciones por semana). La tarjeta de calidad de muestra
-  marca en gris las semanas con `n < 100` y lo dice en su nota. Los temas se comparan
-  **por mes**, nunca por semana.
+  marca en gris las semanas con `n < 100` y lo dice en su nota. **Los temas ya no se
+  comparan en el tiempo en ninguna escala**: la tarjeta que lo hacía por mes se retiró en
+  v0.7 porque las bases mensuales (14 / 143 / 361 / 192) siguen el calendario del volcado.
 - **Umbral y guarda estadística en dispositivos.** Solo modelos con `n ≥ 30`, y se marca
   «peor que la media» únicamente si el intervalo de Wilson al 95 % **queda entero por
   encima** de la base global. Sin eso se persiguen modelos que solo parecen malos por
   tener pocas valoraciones.
 - **Celdas sin base suficiente van en blanco**, no a cero (`n ≥ 25` en los mapas de
-  calor, `n ≥ 30` en columnas de idioma, `n ≥ 40` en familias y meses).
+  calor, `n ≥ 30` en columnas de idioma, `n ≥ 40` en familias).
+  **El umbral va por celda, no solo por columna.** En «Qué duele en cada idioma» el
+  denominador (las reviews del idioma) pasa de sobra, pero el numerador de casi todas las
+  celdas es de una cifra: pintar «1,8 %» sobre 2 reviews es precisión inventada. Con el
+  umbral por celda (`MIN_CELL` = 5) sobreviven **5 de 32 celdas**, y los huecos son el
+  mensaje: fuera del español casi no hay texto del que concluir. La tabla sí enseña el
+  recuento de todas, para que el dato en crudo se pueda auditar.
 - **El sentimiento se calcula del texto, nunca de la nota.** Por eso el cruce
   sentimiento × nota informa: si se derivara de la estrella, sería una tautología.
 - **Ningún volumen se muestra sin su signo.** Una barra que dice «Datos, cobertura y
@@ -510,7 +524,9 @@ Son la razón de que las tarjetas no se contradigan entre sí:
 - La tabla de segmentos divide por el multiplicador del segmento filtrado para no
   contarlo dos veces.
 - Exactamente **una cifra-héroe por vista**: rating medio en Rating, reviews accionables
-  en Reviews. La portada no tiene héroe: son dos módulos de igual peso.
+  en Reviews. La portada no tiene héroe: son **tres** módulos de igual peso, uno por
+  fuente —Rating, Reviews y la encuesta—, y cada uno se calcula con el corte de SU
+  pestaña (`rSel()` los dos primeros, `sSel()` el tercero).
 - Los KPI se derivan del mismo `rSel()` que las gráficas de esa vista, y la portada usa
   ese mismo corte, para que ninguna tarjeta discuta con otra.
 
