@@ -99,6 +99,24 @@ y es la cifra que convierte esas tres cajas vacías en un embudo de verdad. Tamb
 el **formato 2** (encuestas personalizadas con varias preguntas): el constructor y el JSON
 ya lo soportan, no hay datos.
 
+
+**v0.7** — Limpieza con criterio: fuera `pairs` (ordenaba pares de motivos por recuento
+bruto y presentaba como hallazgo el par MENOS asociado), `topic-month` y `evo` (medían el
+calendario del volcado). Umbral por celda en «Qué duele en cada idioma»: sobreviven 5 de 32
+celdas y los huecos son el mensaje. Las gráficas de tema filtran la lista de texto al
+pulsarlas. La portada gana el módulo de la encuesta.
+
+**v0.8** — **La capa de datos a escala.** El panel deja de generarse desde un CSV exportado a
+mano y pasa a una cadena `bucket de Play Console → data/play/*.csv → data/play.db (SQLite)
+→ index.html`. La base es el archivo (reseñas desde 2013, series diarias desde 2025-02) y el
+panel una ventana generada (2024-01 → hoy): **158.014 valoraciones, 28.916 con texto**, ×16
+y ×42 lo que había. Formato empaquetado ensanchado a 12 caracteres. Y por primera vez el
+panel dibuja el tiempo con datos que lo sostienen: bloque `ST` con nota semanal por versión,
+cierres y ANR por 1.000 dispositivos activos, ANR por versión y por día de la semana, altas
+y bajas de usuario. Lo que salió al mirar: un incidente de cierres entre octubre de 2025 y
+febrero de 2026 (×14, resuelto) y ANR que casi se duplican los sábados. Las tarjetas por
+versión, idioma y modelo dibujan las 12 con más volumen y mandan el resto a la tabla.
+
 ## 1. Pipeline de ingesta continua
 
 Hoy `tools/reviews_build.py` parte de un CSV volcado a mano. Lo que falta:

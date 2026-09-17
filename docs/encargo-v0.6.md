@@ -3,17 +3,20 @@
 > Pegar como prompt en una sesión sobre este repositorio. Es autocontenido.
 > Usa la skill `cro-ux-producto` para esto.
 
-## Estado a 3 sept 2026
+## Estado a 17 sept 2026
+
+El bloqueo de fondo —9 lotes de exportación manual— desapareció en v0.8 con la ingesta
+continua desde el bucket de Play Console (ver `CLAUDE.md`, «Arquitectura de datos»).
 
 | Punto | Estado |
 |---|---|
 | 1.1 Quitar `reply`, `sent-star`, `fam-fric` | **Hecho** |
 | 1.2 Fusionar `lang-dev` y `lang-vol` | **Descartado** tras inspección — ver nota abajo |
 | 1.3 Arreglar `ver` | **Hecho**, con una corrección: el intervalo es de la t, no de Wilson |
-| 1.4 `evo` por versión | **Bloqueado por los datos** |
-| 1.5 `topic-month` → tema × versión | **Bloqueado por los datos** |
-| 1.6 Flujo por versión en ventana equivalente | **Bloqueado por los datos** |
-| 1.7 Temas nuevos por versión | **Bloqueado por los datos** |
+| 1.4 `evo` por versión | **Hecho en v0.8** como `st-rating`: nota semanal total y por versión, desde los informes diarios de Play |
+| 1.5 `topic-month` → tema × versión | **Hecho en v0.8** como `topic-ver`: mapa tema × las 8 versiones con más texto, umbral por celda |
+| 1.6 Flujo por versión en ventana equivalente | **Desbloqueado en v0.8**: `ST.versions[].active_devices` da el despliegue real de cada versión, día a día. Pendiente de construir |
+| 1.7 Temas nuevos por versión | **Hecho en v0.8** como `topic-new`: temas cuyo intervalo de Wilson en la última versión queda entero por encima de las anteriores |
 
 ### Por qué 1.4 a 1.7 están bloqueados
 

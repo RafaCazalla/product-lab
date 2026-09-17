@@ -3,10 +3,16 @@
 Panel interno de la **voz del usuario en Google Play**, orientado a decisiones de
 CPO/CRO: la nota que ponen y lo que escriben.
 
-**Estado: v0.7.** Una sola página autónoma, sin build y sin dependencias. **Todo lo que
-muestra es dato real**, incrustado en el propio HTML, y ahora de **dos fuentes**:
-9.754 valoraciones de Google Play (710 con texto, 31 may – 14 ago 2026) y 3.454
-respuestas de la encuesta de salida (10 jun – 14 sep 2026, España, Android).
+**Estado: v0.8.** Una sola página autónoma, sin build y sin dependencias en el navegador.
+**Todo lo que muestra es dato real**, incrustado en el propio HTML, de **dos fuentes**:
+
+- **Google Play**, desde los informes masivos de Play Console (bucket de Cloud Storage),
+  cargados en **SQLite** (`data/play.db`) y publicados como ventana: hoy **2024-01 → hoy**,
+  158.014 valoraciones (28.916 con texto), más las **series diarias** de nota, cierres, ANR
+  e instalaciones desde febrero de 2025. La base guarda también el histórico desde 2013.
+- La **encuesta de salida**: 3.454 respuestas (10 jun – 14 sep 2026, España, Android).
+
+**La base es el archivo; el panel es una ventana generada.** Ver «Arquitectura de datos».
 
 **El panel no interpreta por su cuenta.** Todo lo que se lee sin pulsar nada es
 aritmética sobre los datos. La interpretación la escribe Claude, y solo cuando se pulsa
@@ -34,11 +40,21 @@ historial de git si hacen falta.
 
 ```
 index.html                    toda la aplicación (estilos + datos + gráficas + vistas)
-data/reviews.json             valoraciones reales ya clasificadas (copia legible del
-                              bloque que va incrustado en index.html)
-tools/reviews_fetch.py        API de Google Play -> CSV acumulado. Sin dependencias: firma el
-                              JWT en Python puro. Ver «Ingesta desde la API»
-tools/reviews_build.py        CSV de Google Play -> JSON clasificado. Etiqueta tema y
+data/play/                    los CSV descargados del bucket (NO se publican; `data/` va en
+                              .gitignore)
+data/play.db                  la base SQLite: reviews clasificadas + stats en formato largo
+data/panel.json               copia legible de RD y ST tal como van incrustados
+tools/play_reports.py         bucket de Cloud Storage -> data/play/*.csv (UTF-16 -> UTF-8).
+                              Filtra por paquete, salta lo ya bajado, rebaja el mes en curso
+tools/db_load.py              data/play/*.csv -> data/play.db (SQLite, biblioteca estándar).
+                              Idempotente e incremental; clasifica el texto AL CARGAR
+tools/panel_build.py          data/play.db -> RD y ST incrustados en index.html. Es el paso
+                              de construcción. `--empty` deja el esqueleto del repositorio
+tools/reviews_fetch.py        API `reviews.list` -> CSV. Solo 7 días y solo con texto: hoy es
+                              un complemento para lo más fresco, no la fuente
+tools/reviews_build.py        Léxico de clasificación (tema, sentimiento, fricción) y
+                              utilidades de empaquetado. `db_load.py` lo importa. Su modo
+                              CSV -> JSON sigue funcionando pero ya no es el camino
                               sentimiento con un léxico multiidioma. Sin dependencias.
 tools/survey_build.py         CSV de encuesta -> JSON clasificado. Importa el
                               clasificador de reviews_build: misma taxonomía, que es
@@ -129,36 +145,39 @@ Reglas de esta parte:
 - La lectura sale marcada como escrita por Claude, con la advertencia de que **si una
   cifra no cuadra, manda la tarjeta**.
 
-## El panel ya no dibuja el tiempo
+## El tiempo, ahora sí — y solo desde `ST`
 
-**No hay ninguna gráfica temporal, y es a propósito.** Hasta v0.6 hubo dos —rating por
-idioma con selector de grano, y temas por mes— y las dos se retiraron en v0.7 por la misma
-razón: **medían el calendario del volcado, no el producto**.
+Hasta v0.7 el panel **no dibujaba el tiempo** a propósito: la recolección de Play llegaba en
+9 lotes de cobertura desigual y cualquier serie medía el calendario del volcado. Eso se
+arregló en la raíz en v0.8: la ingesta es **continua desde los informes diarios de Play
+Console**, y con ella entra el bloque `ST` (series diarias: nota, cierres, ANR,
+instalaciones; en total y por versión).
 
-La recolección de Play llegó en **9 lotes** de cobertura muy desigual, concentrados en la
-primera quincena de cada mes (julio: 4.152 valoraciones en la primera quincena, 6 en la
-segunda). Dos periodos contiguos no son muestras comparables, así que cualquier subida o
-bajada entre ellos es, antes que nada, el lote. La tarjeta de rating por idioma llegó a
-tener un titular calculado que decía justo eso —el español pasaba de 3,69 a 4,75 mientras
-su base pasaba de 90 a 4.158 valoraciones—: una tarjeta cuyo mejor titular posible es
-«no te creas esta tarjeta» no merece el ancho que ocupa.
+Las reglas para dibujar el tiempo, que salen de lo que Play publica:
 
-La encuesta tiene el mismo problema por su lado: **junio concentra el 76 %** de las
-respuestas.
+- **Semana, no día.** 593 puntos diarios de nota media son ruido; la media semanal enseña la
+  forma. Una semana necesita `STMIN` (4) días con dato para dibujarse.
+- **Las series de `ST` solo obedecen al rango de fechas del corte.** Idioma, dispositivo y
+  nota no las filtran (Play no las publica así) y **el subtítulo lo dice** en todas.
+- **Cierres y ANR se normalizan por dispositivos activos** (eventos por 1.000 y día). Y la
+  nota de cada tarjeta de vitals repite lo mismo: Play publica **recuentos de eventos**; los
+  umbrales de Android vitals (1,09 % cierres, 0,47 % ANR) son **% de usuarios afectados**,
+  otra magnitud. Esta tasa compara semanas y versiones entre sí; **no dice si se cruza el
+  umbral**. Para eso hace falta la Play Developer Reporting API (`vitals.crashrate`).
+- **Los huecos se ven.** `null` parte la línea. Faltan cuatro días de agosto de 2026 en
+  cierres y no se rellenan. El mes en curso está incompleto porque los informes se publican
+  con 3-7 días de retraso, y las notas avisan de leer una caída ahí.
+- **Un solo eje.** Cierres y ANR comparten unidad y van juntos; nota e instalaciones van en
+  tarjetas aparte.
 
-Lo que queda en su lugar es honesto y suficiente:
+Las tarjetas: `st-rating` (nota semanal, total y 4 versiones), `st-vitals` (cierres y ANR
+por 1.000 dispositivos), `st-anr-ver` (tasa de ANR por versión, últimas 8 semanas),
+`st-dow` (ANR por día de la semana: si se concentran en fin de semana siguen al calendario
+de partidos y apuntan a carga, no a hardware) y `st-installs` (altas y bajas de usuario).
 
-- **`cov`** (Rating) y **`wave`** (Survey) enseñan la cobertura de la muestra por periodo.
-  Son tarjetas de método: dicen cuándo NO se puede comparar.
-- **`ver`** (Rating) compara versiones, que es la dimensión con la que sí se atribuye un
-  cambio a una release — con su intervalo de confianza, para no confundir una versión con
-  poca base con una versión mala.
-
-**No añadas gráficas de tiempo.** Se desbloquean con dos cosas, y hasta que lleguen las
-dos la respuesta es no: **ingesta continua** en vez de lotes, y **fechas reales de
-publicación** de cada versión desde Play Console. El detalle de por qué, con los números,
-está en `docs/encargo-v0.6.md`.
-
+**Lo que Google no tiene:** las series diarias empiezan en **febrero de 2025** (no hay
+informes de estadísticas de 2024 en el bucket, y de 2023 solo noviembre). Las reseñas sí
+llegan desde agosto de 2013.
 
 ## Criterio de visualización
 
@@ -340,6 +359,46 @@ El fichero va en bloques `<script>` en este orden, y conviene mantenerlo así:
    `bucketBy()`, `wilson()`, `emptyCut()`, `renderRating`, `renderReviews`.
 9. **Enrutado y filtros** — `renderActive()`, `selectTab()`, las dos barras, tema.
 
+## Arquitectura de datos
+
+```
+bucket pubsite_prod_…  ──play_reports──▶  data/play/*.csv  ──db_load──▶  data/play.db
+                                                                              │
+                                                              panel_build (ventana)
+                                                                              ▼
+                                                             index.html  (RD + ST + SD)
+```
+
+**Por qué una base y no el CSV de siempre.** Con 9.754 valoraciones parsear un CSV en cada
+build era razonable. Con 158.895 desde 2024 —y medio millón desde 2013— no lo es por tres
+motivos que no se arreglan optimizando el parser: la ingesta tiene que ser incremental, el
+texto se clasifica una vez y no en cada build, y reviews, notas, cierres, ANR e
+instalaciones tienen que poder cruzarse por fecha y versión, que es lo que hacía falta para
+saber **dónde** duele.
+
+**Por qué el panel sigue siendo un fichero.** Un servidor con base detrás obligaría a perder
+el Artifact —un enlace privado que se abre sin instalar nada— y a mantener infraestructura,
+para un dato que hoy cabe en 8,4 MB. Se reconsidera cuando la ventana no quepa, no antes.
+
+**`stats` va en formato largo** `(metric, date, dim, dim_value, field, value)`. Añadir una
+dimensión que Play publique mañana es meter filas, no migrar el esquema. Con el índice por
+`(metric, dim, date)`, las agregaciones del panel salen en milisegundos con millones de
+celdas.
+
+**Identidad de una valoración.** Solo las que llevan texto traen `Review Link`. Para el 92 %
+restante la clave se compone con marca de tiempo (ms), dispositivo, idioma y nota: única en
+158.893 de 158.895 filas. Si el usuario edita, vuelve con la misma marca y el *upsert* la
+sustituye. La huella conservadora de `dedupe()` del flujo CSV ya no hace falta aquí.
+
+**Tres trampas del bucket**, que cuestan una tarde cada una: los CSV vienen en **UTF-16**;
+el bucket tiene los informes de **todas las apps** de la cuenta (hay que filtrar por
+paquete); y se publican con **3-7 días de retraso**, acumulando en el fichero del mes.
+
+**Topes de dibujo.** Con esta escala, las tarjetas que listan filas por versión, idioma o
+modelo dibujan **las 12 con más volumen** y mandan el resto a la tabla, diciendo cuántas
+quedan fuera. Un titular calculado («por debajo con certeza») se calcula sobre **todas**,
+no solo sobre las dibujadas.
+
 ## Capa de datos (Google Play)
 
 Es el único origen de datos del panel. Su estado es `rstate`, y la barra de filtros
@@ -483,37 +542,54 @@ y este panel se publica.
 - Comprobación de una línea antes de publicar: `grep -c APA91b index.html` tiene que dar
   **0**.
 
-### Regenerar los datos
+### Regenerar los datos (la cadena completa)
 
 ```bash
-python3 tools/reviews_build.py <csv de Play> -o data/reviews.json --inline index.html
-python3 tools/reviews_build.py <csv de Play> --audit    # revisar el etiquetado a mano
-
-python3 tools/survey_build.py <csv de encuesta> -o data/survey.json --inline index.html
-python3 tools/survey_build.py <csv de encuesta> --audit
+python3 tools/play_reports.py --desde 202401          # bucket -> data/play/*.csv (UTF-8)
+python3 tools/db_load.py                              # CSV -> data/play.db (incremental)
+python3 tools/panel_build.py --inline index.html      # SQLite -> RD y ST en index.html
+osascript -l JavaScript tools/smoke.js                # antes de dar nada por bueno
 ```
 
-`--inline` sustituye el bloque `const RD = …;` (o `const SD = …;`) dentro de
-`index.html`, escapando `<` como `\u003c`: sin eso, una sola review que contenga
-`</script` tumba la página. **No pegues el JSON a mano.**
+- `play_reports.py` necesita credencial: `~/.config/besoccer/token.txt` (OAuth Playground,
+  dura una hora) o `~/.config/besoccer/play-sa.json` (cuenta de servicio, la buena para
+  automatizar). Vuelve a bajar siempre el mes en curso, porque ese fichero sigue creciendo.
+- `db_load.py` solo carga lo que falta o ha cambiado de tamaño (`--rehacer` para todo).
+  Clasifica el texto **al cargar** y guarda la etiqueta: el léxico no se vuelve a aplicar en
+  cada build. `--resumen` enseña el estado de la base.
+- `panel_build.py` publica una **ventana** (`--desde/--hasta`, por defecto 2024-01-01 → hoy)
+  y **imprime el desglose de peso** (filas, textos, respuestas, tablas). Ese desglose es lo
+  que decide la ventana: hoy 8,4 MB, de los que 2,7 son respuestas del equipo. Si no cabe,
+  se acorta la ventana o se sacan las respuestas; **la base no se toca**.
+- El esqueleto del repositorio se genera con `panel_build.py --empty --inline index.html`.
 
-**El reemplazo va por corte de cadenas, nunca con `re.sub`.** En la cadena de reemplazo
-de `re.sub` las barras invertidas son escapes, y el JSON va lleno de `\u003c`: el bloque
-sale corrupto y la página no arranca. Se perdió un rato con esto; está así a propósito.
+**Los tres pasos escriben en `index.html` por corte de cadenas, nunca con `re.sub`**: el JSON
+va lleno de `\u003c` y en la cadena de reemplazo de `re.sub` las barras son escapes.
+
+Para la encuesta, el flujo no cambia:
+
+```bash
+python3 tools/survey_build.py <csv de encuesta> -o data/survey.json --inline index.html
+```
 
 ### Formato: columnar empaquetado
 
-Las 9.764 valoraciones no van como objetos, sino como una cadena de **10 caracteres por
-fila** (`rows`), con índices en base 36 a las tablas `langs`, `days`, `devs`, `vers`:
+Las valoraciones no van como objetos, sino como una cadena de **12 caracteres por fila**
+(`rows`, formato `rd/2`), con índices en base 36 a las tablas `langs`, `days`, `devs`, `vers`:
 
 ```
-rating(1) idioma(1) día(2) dispositivo(3) versión(2) respuesta(1)
+rating(1) idioma(2) día(3) dispositivo(3) versión(2) respuesta(1)
 ```
+
+`RD.meta.rw` dicta el ancho y el decodificador **falla al arrancar** si `rows.length !==
+n × rw`, en vez de pintar cifras absurdas tres tarjetas más abajo. El formato anterior (10
+chars, idioma en 1 y día en 2) se desbordaba con 53 idiomas y 987 días; los anchos actuales
+aguantan 1.296 idiomas, 46.656 días y 46.656 dispositivos.
 
 `respuesta` es `-` si nadie contestó, o la latencia en días en base 36. La capa lo
 descomprime una vez a arrays tipados (`R_rat`, `R_lang`, `R_day`, `R_dev`, `R_ver`,
-`R_lat`, `R_fam`, `R_dayn`, `R_text`), y a partir de ahí **filtrar las 9.764 filas por
-cualquier cruce es instantáneo**, sin índices ni caché. Solo las 720 con texto llevan
+`R_lat`, `R_fam`, `R_dayn`, `R_text`), y a partir de ahí **filtrar 158.000 filas por
+cualquier cruce es instantáneo**, sin índices ni caché. Solo las que llevan texto tienen
 objeto completo en `rev`, enlazado por número de fila.
 
 Las respuestas del equipo se guardan deduplicadas en `tpl` (335 plantillas para 585

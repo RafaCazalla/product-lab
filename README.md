@@ -24,7 +24,7 @@ y ya. Las gráficas son SVG escrito a mano.
 
 ## Los datos van dentro del repositorio
 
-`index.html` se publica **con los datos reales incrustados**: 9.754 valoraciones de
+`index.html` se publica **con los datos reales incrustados**: 158.014 valoraciones de
 Google Play y 710 reviews con su texto literal, del **31 de mayo al 14 de agosto de 2026**
 (el grueso cae en junio, julio y agosto; mayo son solo los últimos días).
 
@@ -44,7 +44,9 @@ Conviene saber qué implica, porque es una decisión y no un descuido:
 Para regenerar los datos desde un export de la consola de Google Play:
 
 ```bash
-python3 tools/reviews_build.py mi_export.csv -o data/reviews.json --inline index.html
+python3 tools/play_reports.py --desde 202401   # bucket de Play -> data/play/*.csv
+python3 tools/db_load.py                       # CSV -> data/play.db
+python3 tools/panel_build.py --inline index.html   # SQLite -> RD y ST en index.html
 ```
 
 El CSV debe traer estas columnas: `id`, `package_name`, `app_version_code`, `app_version`,
@@ -54,38 +56,41 @@ El CSV debe traer estas columnas: `id`, `package_name`, `app_version_code`, `app
 Y para dejar el `index.html` sin datos (estado vacío, útil si algún día se separan):
 
 ```bash
-python3 tools/reviews_build.py --empty --inline index.html
+python3 tools/panel_build.py --empty --inline index.html
 ```
 
-## Para replicarlo con la base de datos completa
+## Cómo escala (y hasta dónde)
 
-Este panel es un **prototipo con dos meses y medio de datos** (31 may – 14 ago 2026,
-9.754 valoraciones). Lo que sigue es lo que hay que saber para llevarlo a los 5 años de
-histórico, por orden de lo que rompe antes.
+Desde v0.8 el panel se genera desde **SQLite** (`data/play.db`), alimentado por los
+informes masivos de Play Console. La base guarda todo lo que Google publica —reseñas desde
+2013, series diarias desde febrero de 2025— y el HTML publica una **ventana** (hoy 2024-01 →
+hoy: 158.014 valoraciones, 28.916 con texto). Lo que sigue es lo que hay que saber para
+mover esa ventana, por orden de lo que rompe antes.
 
-### 1. El formato aguanta; incrustarlo en el HTML, no
+### 1. El formato aguanta; lo que manda es el peso de la ventana
 
-Las valoraciones no van como objetos JSON, sino como una cadena de **10 caracteres por
+Las valoraciones no van como objetos JSON, sino como una cadena de **12 caracteres por
 fila** con índices en base 36 a tablas de idioma, día, dispositivo y versión:
 
 ```
-rating(1) idioma(1) día(2) dispositivo(3) versión(2) respuesta(1)
+rating(1) idioma(2) día(3) dispositivo(3) versión(2) respuesta(1)
 ```
 
 Se descomprime una vez a arrays tipados y a partir de ahí filtrar por cualquier cruce es
-un recorrido lineal sin índices ni caché. Eso escala bien:
+un recorrido lineal sin índices ni caché. `panel_build.py` imprime el desglose de peso en
+cada build, y ese desglose es la decisión:
 
-| | Valoraciones | Con texto | Empaquetado |
+| | Valoraciones | Con texto | En el HTML |
 |---|---|---|---|
-| Hoy | 9.754 | 710 | 445 KB (en el HTML) |
-| 5 años, conservador | ~120.000 | ~8.900 | ~2,4 MB |
-| 5 años, al ritmo del mejor mes | ~355.000 | ~26.000 | ~6,8 MB |
+| Hoy (v0.8, 2024 →) | 158.014 | 28.916 | 8,4 MB, de los que 2,7 son respuestas del equipo |
+| Desde 2013, estimado | ~500.000 | ~90.000 | ~25 MB: no cabe en un Artifact (16 MB) |
 
-Lo que no aguanta es meterlo en el `index.html`. A partir de ~1 MB hay que **servirlo
-desde un endpoint** y quitar el bloque `const RD`. El cambio es acotado: `metric()`,
-`rSel()` y las funciones `*Rows()` son los únicos puntos de entrada, y `renderActive()` es
-el único sitio que habría que volver `async` (ya mantiene el render anterior en opacidad
-reducida mientras llegan los datos, sin esqueleto ni salto de layout).
+Si la ventana no cabe, primero se sacan las **respuestas del equipo** (contestan al 97 % de
+las reviews con texto y pesan más que las propias reviews), después se acorta la ventana, y
+solo al final se plantea **servir desde un endpoint** en vez de incrustar. `rSel()` y las
+funciones `*Rows()` son los únicos puntos de entrada, y `renderActive()` es el único sitio
+que habría que volver `async` (ya mantiene el render anterior en opacidad reducida mientras
+llegan los datos). La base no se toca en ninguno de los tres casos.
 
 ### 2. Los agregados deberían bajar al servidor
 
@@ -137,13 +142,15 @@ El diario solo sostiene español y francés; en inglés dibuja 2 puntos y no es 
 mensual aplana la forma. Con la base de 5 años y una ingesta diaria, el grano diario pasa
 a tener sentido para los cuatro idiomas.
 
-### 6. Lo que este dataset no permite afirmar, y con la base completa sí
+### 6. Lo que la ingesta continua ha cambiado
 
-La recolección llegó en 9 lotes de cobertura muy desigual y concentrada en la primera
-quincena de cada mes (julio: 4.152 valoraciones en la primera, 6 en la segunda). Por eso
-el panel **se niega a dibujar tendencias semanales** y la única gráfica temporal es
-mensual, con huecos y el aviso dentro. Con ingesta continua eso desaparece: se puede
-bajar a semanas, quitar los huecos y activar alertas por umbral.
+Hasta v0.7 la recolección llegaba en 9 lotes de exportación manual, de cobertura tan
+desigual que el panel **se negaba a dibujar tendencias**. Desde v0.8 los datos vienen de los
+informes diarios de Play Console y el bloque `ST` trae las series de nota, cierres, ANR e
+instalaciones. Lo que queda por avisar es el borde: el mes en curso llega con 3-7 días de
+retraso y la última semana siempre está corta. Lo que sigue sin poder afirmarse es si se
+cruzan los **umbrales de Android vitals**: Play publica recuentos de eventos y los umbrales
+son porcentaje de usuarios afectados. Para eso hace falta la Play Developer Reporting API.
 
 ### Lo que el prototipo ya deja ver
 
@@ -186,8 +193,9 @@ python3 tools/validate_palette.py "#57a52e,#2f95cf,#d9515f,#9179e0,#b98d16,#23a9
 El panel está construido para no afirmar más de lo que el dato sostiene, y esas reglas
 son parte del diseño, no un adorno:
 
-- **No dibuja tendencias semanales.** El export de Play llega en lotes de cobertura muy
-  desigual; la única gráfica temporal es mensual y lleva el aviso dentro.
+- **El tiempo se dibuja por semanas y solo desde las series diarias de Play.** Una semana
+  necesita cuatro días con dato; los huecos partan la línea en vez de rellenarse; y cada
+  tarjeta de series dice que solo obedece al rango de fechas, no al resto de filtros.
 - **Umbrales y guarda estadística.** Un dispositivo se marca «peor que la media» solo si
   su intervalo de Wilson al 95 % queda entero por encima; las celdas sin base suficiente
   van en blanco, no a cero.

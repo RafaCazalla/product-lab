@@ -788,6 +788,149 @@ function barsH(cfg) {
 </script>
 
 <script>
+/* ---------- línea temporal con crosshair ----------
+   Acepta huecos: un `null` en `values` parte la línea en vez de inventar el
+   tramo. Hace falta porque hay meses en los que un idioma no reúne muestra
+   suficiente, y unir esos puntos dibujaría una tendencia que no existe.
+   `thin` marca los puntos con base pequeña: se pintan huecos, no macizos. */
+function lineChart(cfg) {
+  const fmt = cfg.fmt || (v => nf(v, 0));
+  return (w) => {
+    const h = cfg.height || 208;
+    const pad = { t: 12, r: cfg.padR ?? 58, b: 26, l: cfg.padL ?? 54 };
+    const iw = Math.max(60, w - pad.l - pad.r), ih = h - pad.t - pad.b;
+    const all = cfg.series.flatMap(s => s.values).filter(v => v !== null && Number.isFinite(v));
+    const lo = cfg.yZero ? 0 : (all.length ? Math.min(...all) : 0);
+    const hi = all.length ? Math.max(...all) : 1;
+    let ticks = niceTicks(lo - (cfg.yZero ? 0 : (hi - lo) * .12), hi + (hi - lo) * .08 || hi * 1.05, 4);
+    if (cfg.yMax !== undefined) {           /* nada por encima del techo real de la escala */
+      ticks = ticks.filter(t => t <= cfg.yMax);
+      if (ticks[ticks.length - 1] < cfg.yMax) ticks.push(cfg.yMax);
+    }
+    let y0 = ticks[0], y1 = ticks[ticks.length - 1];
+    /* Serie plana (el filtro fija una sola nota, o todos los meses coinciden):
+       el eje se quedaría con un tick y (v-y0)/(y1-y0) sería 0/0. Se abre un
+       punto hacia abajo para respetar el techo de la escala. */
+    if (!(y1 > y0)) { y0 = y0 - 1; ticks = [y0, y1]; }
+    const n = cfg.x.length;
+    const X = i => pad.l + (n === 1 ? iw / 2 : i * iw / (n - 1));
+    const Y = v => pad.t + ih - (v - y0) / (y1 - y0) * ih;
+    const svg = svgRoot(w, h, cfg.alt);
+
+    /* bandas de jornada — dato real del contexto: los picos son días de partido */
+    if (cfg.bands && cfg.bands.length) {
+      const bw = n > 1 ? iw / (n - 1) : iw;
+      cfg.bands.forEach(i => svg.appendChild(S('rect', {
+        x: clamp(X(i) - bw / 2, pad.l, pad.l + iw), y: pad.t,
+        width: Math.min(bw, pad.l + iw - clamp(X(i) - bw / 2, pad.l, pad.l + iw)),
+        height: ih, fill: 'var(--sunken)'
+      })));
+    }
+    ticks.forEach(t => {
+      svg.appendChild(gridLine(pad.l, pad.l + iw, Y(t)));
+      svg.appendChild(S('text', { x: pad.l - 8, y: Y(t) + 3.5, class: 'tick', 'text-anchor': 'end' }, fmt(t)));
+    });
+    svg.appendChild(S('line', { x1: pad.l, x2: pad.l + iw, y1: pad.t + ih, y2: pad.t + ih, stroke: 'var(--axis)', 'stroke-width': 1 }));
+
+    const every = Math.max(1, Math.ceil(n / (iw / 62)));
+    cfg.x.forEach((lb, i) => {
+      if (i % every && i !== n - 1) return;
+      svg.appendChild(S('text', { x: X(i), y: h - 8, class: 'tick', 'text-anchor': i === n - 1 ? 'end' : 'middle' }, lb.replace('sem. ', '')));
+    });
+
+    /* trazado por tramos: cada hueco corta la línea y empieza otra */
+    const pathOf = vals => {
+      let d = '', pen = false;
+      vals.forEach((v, i) => {
+        if (v === null || !Number.isFinite(v)) { pen = false; return; }
+        d += (pen ? 'L' : 'M') + X(i) + ' ' + Y(v);
+        pen = true;
+      });
+      return d;
+    };
+    cfg.series.forEach(s => {
+      const d = pathOf(s.values);
+      if (d) svg.appendChild(S('path', {
+        d, fill: 'none', stroke: s.color, 'stroke-width': 2,
+        'stroke-linejoin': 'round', 'stroke-linecap': 'round',
+      }));
+    });
+    /* un punto por dato: hueco cuando la base es pequeña */
+    cfg.series.forEach((s, si) => {
+      s.values.forEach((v, i) => {
+        if (v === null || !Number.isFinite(v)) return;
+        const isThin = cfg.thin && cfg.thin[si] && cfg.thin[si][i];
+        svg.appendChild(S('circle', {
+          cx: X(i), cy: Y(v), r: 4,
+          fill: isThin ? 'var(--card)' : s.color,
+          stroke: s.color, 'stroke-width': 2,
+        }));
+      });
+    });
+    /* etiqueta directa en el último punto CON dato de cada serie, evitando
+       colisiones: nunca un número en cada punto */
+    const lastOf = s => {
+      for (let i = s.values.length - 1; i >= 0; i--) {
+        const v = s.values[i];
+        if (v !== null && Number.isFinite(v)) return i;
+      }
+      return -1;
+    };
+    const ends = cfg.series.map(s => ({ s, i: lastOf(s) })).filter(e => e.i >= 0)
+      .map(e => ({ s: e.s, i: e.i, y: Y(e.s.values[e.i]) })).sort((a, b) => a.y - b.y);
+    const shown = [];
+    ends.forEach(e => {
+      if (!shown.some(o => Math.abs(o.y - e.y) < 14 && o.i === e.i)) shown.push(e);
+    });
+    shown.forEach(e => svg.appendChild(S('text', {
+      x: X(e.i) + 9, y: e.y + 4, class: 'dlabel' + (e.s.emph ? '' : ' sec'),
+    }, fmt(e.s.values[e.i]))));
+
+    /* capa de hover / teclado */
+    const cross = S('line', { y1: pad.t, y2: pad.t + ih, stroke: 'var(--axis)', 'stroke-width': 1, opacity: 0 });
+    svg.appendChild(cross);
+    const dots = cfg.series.map(s => { const c = S('circle', { r: 4.5, fill: s.color, stroke: 'var(--card)', 'stroke-width': 2, opacity: 0 }); svg.appendChild(c); return c; });
+    const hit = S('rect', { x: pad.l, y: pad.t, width: iw, height: ih, class: 'hit', tabindex: 0, role: 'application', 'aria-label': cfg.aria || cfg.alt || '' });
+    let idx = -1;
+    const showAt = (i, cx, cy) => {
+      idx = clamp(i, 0, n - 1);
+      cross.setAttribute('x1', X(idx)); cross.setAttribute('x2', X(idx)); cross.setAttribute('opacity', 1);
+      dots.forEach((d, k) => {
+        const v = cfg.series[k].values[idx];
+        if (v === null || !Number.isFinite(v)) { d.setAttribute('opacity', 0); return; }
+        d.setAttribute('cx', X(idx)); d.setAttribute('cy', Y(v)); d.setAttribute('opacity', 1);
+      });
+      const r = svg.getBoundingClientRect(), sc = r.width / w;
+      const first = cfg.series.find(s => s.values[idx] !== null && Number.isFinite(s.values[idx]));
+      tipShow(cx ?? r.left + X(idx) * sc,
+        cy ?? r.top + (first ? Y(first.values[idx]) : pad.t) * sc,
+        cfg.x[idx],
+        cfg.series.map((s, k) => ({
+          color: s.color,
+          value: (s.values[idx] === null || !Number.isFinite(s.values[idx]))
+            ? '—' : fmt(s.values[idx]),
+          name: s.name + (cfg.bases && cfg.bases[k] && cfg.bases[k][idx] !== undefined
+            ? ' · n=' + nf(cfg.bases[k][idx]) : ''),
+        })));
+    };
+    const clear = () => { cross.setAttribute('opacity', 0); dots.forEach(d => d.setAttribute('opacity', 0)); tipHide(); };
+    hit.addEventListener('pointermove', ev => {
+      const r = svg.getBoundingClientRect(), sc = r.width / w;
+      showAt(Math.round(((ev.clientX - r.left) / sc - pad.l) / (iw / Math.max(1, n - 1))), ev.clientX, ev.clientY);
+    });
+    hit.addEventListener('pointerleave', clear);
+    hit.addEventListener('focus', () => showAt(idx < 0 ? n - 1 : idx));
+    hit.addEventListener('blur', clear);
+    hit.addEventListener('keydown', ev => {
+      if (ev.key === 'ArrowRight') { showAt(idx + 1); ev.preventDefault(); }
+      if (ev.key === 'ArrowLeft') { showAt(idx - 1); ev.preventDefault(); }
+      if (ev.key === 'Escape') clear();
+    });
+    svg.appendChild(hit);
+    return svg;
+  };
+}
+
 /* ---------- mapa de calor / matriz de cohortes (secuencial, un tono) ---------- */
 const SEQ = ['var(--q1)', 'var(--q2)', 'var(--q3)', 'var(--q4)', 'var(--q5)', 'var(--q6)'];
 /* La tinta de la celda se decide por la luminancia del relleno, no por el paso:
@@ -1591,8 +1734,6 @@ const I18N = {
       'Grey weeks hold between {lo} and {hi} ratings against {best} in the best one. If it is the last week of the slice, that is Play’s publishing delay; if it is another, compare it with care.',
     'semana con muestra suficiente (n ≥ 100)':
       'week with a sufficient sample (n ≥ 100)',
-    'cobertura parcial: no leer tendencia':
-      'partial coverage: do not read a trend',
     'Semana del':
       'Week of',
     'Muestra':
@@ -1703,6 +1844,140 @@ const I18N = {
       'Show only {a} · {b}',
     'Ver solo {a} · {b} ({n})':
       'Show only {a} · {b} ({n})',
+    'Series diarias de Play Console':
+      'Play Console daily series',
+    'Nota media diaria de Play, por semana':
+      'Play’s daily average rating, by week',
+    'media de las medias diarias que publica Play · {n} semanas · solo obedece al rango de fechas del corte':
+      'mean of the daily averages Play publishes · {n} weeks · follows only the date range of the slice',
+    'Todas las versiones':
+      'All versions',
+    'Última semana completa: {a}. La semana más baja del rango fue la del {d}, con {b}.':
+      'Last full week: {a}. The lowest week in the range was the one starting {d}, at {b}.',
+    'No hay semanas completas en el rango.':
+      'No full weeks in the range.',
+    'Cada punto es la media de las medias diarias que Play publica para esa semana, sin ponderar por volumen: Play no da el recuento diario en este informe. Las versiones son las cuatro con más días de dato en el rango. Una semana necesita al menos {n} días con dato para dibujarse.':
+      'Each point is the mean of the daily averages Play publishes for that week, unweighted by volume: Play does not give daily counts in this report. The versions are the four with most days of data in the range. A week needs at least {n} days of data to be drawn.',
+    'Cierres y ANR por 1.000 dispositivos activos y día':
+      'Crashes and ANRs per 1,000 active devices per day',
+    'media semanal de la tasa diaria · eventos, no usuarios · solo obedece al rango de fechas del corte':
+      'weekly mean of the daily rate · events, not users · follows only the date range of the slice',
+    'Cierres':
+      'Crashes',
+    'Pico de cierres la semana del {d}: {c} por 1.000 dispositivos y día. ANR en las últimas 4 semanas: {a}, frente a {p} en las 4 anteriores.':
+      'Crash peak in the week starting {d}: {c} per 1,000 devices per day. ANRs over the last 4 weeks: {a}, against {p} in the 4 before.',
+    'Sin datos de cierres en el rango.':
+      'No crash data in the range.',
+    'Play publica RECUENTOS diarios de cierres y ANR; aquí se dividen entre los dispositivos activos de ese día. Los umbrales de Android vitals ({c} % de cierres, {a} % de ANR) son porcentaje de USUARIOS afectados: otra magnitud, así que esta tasa sirve para comparar semanas y versiones entre sí, no para decir si se cruza el umbral. Los huecos son días sin informe y no se rellenan.':
+      'Play publishes daily COUNTS of crashes and ANRs; here they are divided by that day’s active devices. The Android vitals thresholds ({c} % crashes, {a} % ANRs) are percentages of affected USERS: a different magnitude, so this rate compares weeks and versions with each other but cannot say whether the threshold is crossed. Gaps are days without a report and are not filled in.',
+    'Cierres /1000·día':
+      'Crashes /1000·day',
+    'ANR /1000·día':
+      'ANRs /1000·day',
+    'Días con dato':
+      'Days with data',
+    'ANR por versión':
+      'ANRs by version',
+    'últimas 8 semanas del rango · versiones con ≥ 50.000 dispositivos activos y ≥ 14 días de dato':
+      'last 8 weeks of the range · versions with ≥ 50,000 active devices and ≥ 14 days of data',
+    '{v} es la versión con más ANR por dispositivo: {r} por 1.000 y día, el {p} de todos los ANR del periodo.':
+      '{v} is the version with most ANRs per device: {r} per 1,000 per day, {p} of all ANRs in the period.',
+    'dispositivos activos (media)':
+      'active devices (mean)',
+    'de todos los ANR':
+      'of all ANRs',
+    'La barra es tasa, no volumen: una versión con más dispositivos acumula más ANR aunque funcione igual. El % de todos los ANR va en el tooltip para tener las dos cosas sin mezclarlas.':
+      'The bar is a rate, not a volume: a version with more devices piles up more ANRs even if it behaves the same. The share of all ANRs sits in the tooltip so both are there without mixing them.',
+    'Dispositivos activos':
+      'Active devices',
+    'ANR totales':
+      'Total ANRs',
+    'ANR por día de la semana':
+      'ANRs by day of week',
+    'media de las últimas 12 semanas del rango · por 1.000 dispositivos activos y día':
+      'mean of the last 12 weeks of the range · per 1,000 active devices per day',
+    'El {a} tiene {x} ANR por 1.000 y día frente a {y} el {b}: ×{r}.':
+      '{a} has {x} ANRs per 1,000 per day against {y} on {b}: ×{r}.',
+    'Si los ANR se concentran en fin de semana, el patrón sigue al calendario de partidos: apunta a saturación bajo carga, no a un modelo de teléfono. Un problema de dispositivo se repartiría igual todos los días.':
+      'If ANRs cluster at weekends, the pattern follows the match calendar: it points to saturation under load, not to a phone model. A device problem would spread evenly across the week.',
+    'Día':
+      'Day',
+    'lun':
+      'Mon',
+    'mié':
+      'Wed',
+    'jue':
+      'Thu',
+    'vie':
+      'Fri',
+    'sáb':
+      'Sat',
+    'dom':
+      'Sun',
+    'Altas y bajas de usuario por semana':
+      'User installs and uninstalls per week',
+    'suma semanal · solo obedece al rango de fechas del corte':
+      'weekly sum · follows only the date range of the slice',
+    'Altas':
+      'Installs',
+    'Bajas':
+      'Uninstalls',
+    'Saldo de las últimas 4 semanas: {n} usuarios ({s}).':
+      'Net over the last 4 weeks: {n} users ({s}).',
+    'más altas que bajas':
+      'more installs than uninstalls',
+    'más bajas que altas':
+      'more uninstalls than installs',
+    'Sin datos de instalaciones en el rango.':
+      'No install data in the range.',
+    'Altas y bajas de usuario según Play (no de dispositivo). Una semana incompleta al final del rango suma menos: es el retraso de publicación, no una caída.':
+      'User installs and uninstalls as reported by Play (not device). An incomplete week at the end of the range adds up to less: that is the publishing delay, not a drop.',
+    'Saldo':
+      'Net',
+    'El rango no cubre dos semanas de series de Play':
+      'The range does not cover two weeks of Play series',
+    'Las series diarias de Play Console van de {a} a {b}. Amplía el rango de fechas para dibujarlas.':
+      'Play Console daily series run from {a} to {b}. Widen the date range to draw them.',
+    'puntos sobre la media del corte ({m}); los 12 idiomas con más valoraciones, {k} más con n ≥ 20 en la tabla':
+      'points above the slice average ({m}); the 12 languages with most ratings, {k} more with n ≥ 20 in the table',
+    'las 12 versiones con más valoraciones ({k} más con n ≥ 60 en la tabla) · bigote = intervalo de la media al 95 % · la línea es la media del corte':
+      'the 12 versions with most ratings ({k} more with n ≥ 60 in the table) · whisker = 95 % confidence interval of the mean · the line is the slice average',
+    'punto hueco: semana corta (n < 100), normalmente la última por el retraso de Play':
+      'hollow point: short week (n < 100), usually the last one because of Play’s delay',
+    'Qué duele en cada versión':
+      'What hurts in each version',
+    '% de las reviews de la versión que critican ese tema con 1-2★ · las 8 versiones con más texto (≥ 30 reviews) · celda en blanco por debajo de {n}':
+      'share of the version’s reviews criticising the topic with 1-2★ · the 8 versions with most text (≥ 30 reviews) · cell left blank below {n}',
+    '{tema} en la {v}: {p} de sus reviews lo critican con 1-2★, frente al {m} de media entre versiones.':
+      '{tema} in {v}: {p} of its reviews criticise it with 1-2★, against a {m} average across versions.',
+    'Ninguna celda reúne {n} reviews de 1-2★: no hay nada que comparar entre versiones.':
+      'No cell reaches {n} one- or two-star reviews: there is nothing to compare across versions.',
+    '% de la versión':
+      '% of the version',
+    'El numerador son reviews de 1-2★ que mencionan el tema; el denominador, todas las reviews con texto de esa versión. Comparar por versión y no por mes es lo que permite atribuir una queja a una release: un mes mezcla usuarios que aún no han actualizado. Las columnas van en orden de versión, no de volumen.':
+      'The numerator is 1-2★ reviews mentioning the topic; the denominator, all reviews with text for that version. Comparing by version rather than by month is what lets a complaint be attributed to a release: a month mixes users who have not updated yet. Columns run in version order, not by volume.',
+    'Qué sube en la última versión':
+      'What rises in the latest version',
+    '{tema} sube en la {v}: {p} frente al {r} en las versiones anteriores, y el intervalo no toca la referencia.':
+      '{tema} rises in {v}: {p} against {r} in the earlier versions, and the interval does not touch the reference.',
+    'Ningún tema sube con certeza en la {v} respecto a las versiones anteriores del corte.':
+      'No topic rises with certainty in {v} against the earlier versions of the slice.',
+    '{v} frente a {n} versiones anteriores · solo temas cuyo intervalo de Wilson al 95 % queda entero por encima de la referencia':
+      '{v} against {n} earlier versions · only topics whose 95 % Wilson interval sits entirely above the reference',
+    'en versiones anteriores':
+      'in earlier versions',
+    'reviews 1-2★ en la última':
+      '1-2★ reviews in the latest',
+    'La misma guarda que en «Dispositivos peores que la media»: un tema solo aparece si su intervalo al 95 % queda entero por encima de la tasa de las versiones anteriores. Sin esa guarda saldrían temas que solo parecen nuevos por tener pocas reviews.':
+      'The same guard as in “Devices worse than average”: a topic only appears if its 95 % interval sits entirely above the rate of the earlier versions. Without it, topics that only look new because they have few reviews would show up.',
+    'Que no salga nada no significa que no pase nada: significa que con las reviews que hay no se puede separar de las versiones anteriores con certeza.':
+      'Nothing showing does not mean nothing is happening: it means that with the reviews available it cannot be separated from the earlier versions with certainty.',
+    'Última versión':
+      'Latest version',
+    'Versiones anteriores':
+      'Earlier versions',
+    'Reviews 1-2★':
+      '1-2★ reviews',
     'Qué duele en cada idioma':
       'What hurts in each language',
     '% de las reviews del idioma que critican ese tema con 1-2★':
@@ -2263,8 +2538,12 @@ function renderRating(root) {
   /* --- idioma: desviación (divergente) + dolor (volumen) --- */
   g.appendChild(eyebrow(t('Por idioma'), 'eb-lang'));
   const byLang = bucketBy(rSel({ lang: 1 }), i => RD.langs[R_lang[i]]);
-  const langRowsAll = [...byLang.entries()].map(([l, a]) => ({ l, s: statOf(a) }))
+  /* Con 158.000 valoraciones hay 19 idiomas con n ≥ 20 y la lista crecerá. Se
+     dibujan los 12 con más volumen; el resto va a la tabla, que es donde
+     cabe una lista larga sin convertir la tarjeta en un rollo. */
+  const langRowsTodos = [...byLang.entries()].map(([l, a]) => ({ l, s: statOf(a) }))
     .filter(r => r.s.n >= 20).sort((a, b) => b.s.n - a.s.n);
+  const langRowsAll = langRowsTodos.slice(0, 12), langMas = langRowsTodos.length - langRowsAll.length;
   const gAvg = statOf(bucketBy(rSel({ lang: 1 }), () => 1).get(1) || BUCK()).avg;
 
   const langWorst = langRowsAll.slice().sort((a, b) => a.s.avg - b.s.avg)[0];
@@ -2274,7 +2553,9 @@ function renderRating(root) {
     : '';
   g.appendChild(plotCard({
     key: 'lang-dev', span: 'c6', title: t('Desviación del rating por idioma'),
-    sub: t('puntos sobre la media del corte ({m}); solo idiomas con n ≥ 20', { m: star(gAvg) }),
+    sub: langMas
+      ? t('puntos sobre la media del corte ({m}); los 12 idiomas con más valoraciones, {k} más con n ≥ 20 en la tabla', { m: star(gAvg), k: nf(langMas) })
+      : t('puntos sobre la media del corte ({m}); solo idiomas con n ≥ 20', { m: star(gAvg) }),
     insight: langIns,
     draw: diverging({
       alt: t('Desviación del rating por idioma') + '. ' + langIns,
@@ -2288,7 +2569,7 @@ function renderRating(root) {
     legend: legend([{ name: t('por encima de la media'), color: 'var(--div-pos)' },
                     { name: t('por debajo'), color: 'var(--div-neg)' }]),
     tableFn: () => table([t('Idioma'), 'n', t('Rating'), t('Desv.'), '1-2★'],
-      langRowsAll.map(r => [langName(r.l), nf(r.s.n), star(r.s.avg), signed(r.s.avg - gAvg, 2), rpct(r.s.bad)])),
+      langRowsTodos.map(r => [langName(r.l), nf(r.s.n), star(r.s.avg), signed(r.s.avg - gAvg, 2), rpct(r.s.bad)])),
   }));
   g.appendChild(plotCard({
     key: 'lang-vol', span: 'c6', title: t('Dónde está el volumen de 1★ y 2★'),
@@ -2304,7 +2585,7 @@ function renderRating(root) {
     }),
     note: t('Volumen absoluto, no tasa: el idioma con más valoraciones tiende a acumular más quejas aunque su tasa sea mejor. La tasa está en la tarjeta de al lado.'),
     tableFn: () => table([t('Idioma'), '1-2★', t('Tasa'), 'n'],
-      langRowsAll.map(r => [langName(r.l), nf(r.s.dist[0] + r.s.dist[1]), rpct(r.s.bad), nf(r.s.n)])),
+      langRowsTodos.map(r => [langName(r.l), nf(r.s.dist[0] + r.s.dist[1]), rpct(r.s.bad), nf(r.s.n)])),
   }));
 
   /* --- el confundido: idioma vs hardware --- */
@@ -2370,15 +2651,21 @@ function renderRating(root) {
   /* --- versiones --- */
   g.appendChild(eyebrow(t('Por versión y por dispositivo'), 'eb-ver'));
   const byVer = bucketBy(ids, i => RD.vers[R_ver[i]]);
-  const verRows = [...byVer.entries()].map(([v, a]) => ({ v, s: statOf(a), ci: meanCI(a) }))
-    .filter(r => r.s.n >= 60 && r.v !== '')
+  /* 37 versiones pasan el umbral de n ≥ 60 en la ventana actual: 37 columnas
+     en media tarjeta no se leen. Se dibujan las 12 con más valoraciones,
+     ordenadas por número de versión para que el eje siga siendo cronológico;
+     el resto está en la tabla. */
+  const verRowsTodas = [...byVer.entries()].map(([v, a]) => ({ v, s: statOf(a), ci: meanCI(a) }))
+    .filter(r => r.s.n >= 60 && r.v !== '');
+  const verRows = verRowsTodas.slice().sort((a, b) => b.s.n - a.s.n).slice(0, 12)
     .sort((a, b) => a.v.localeCompare(b.v, undefined, { numeric: true }));
+  const verMas = verRowsTodas.length - verRows.length;
   if (verRows.length) {
     /* Titular calculado, con la misma guarda que `dev-worse`: una versión solo
        se señala si su intervalo al 95 % queda ENTERO por debajo de la media del
        corte. Sin esa guarda se persiguen versiones que solo parecen malas por
        tener pocas valoraciones, que es justo lo que esta tarjeta hacía antes. */
-    const below = verRows.filter(r => r.ci && r.ci[1] < all.avg)
+    const below = verRowsTodas.filter(r => r.ci && r.ci[1] < all.avg)
       .sort((a, b) => a.s.avg - b.s.avg);
     const verIns = below.length
       ? t('{v} queda por debajo de la media del corte con certeza: {a} frente a {m}, con {n} valoraciones.',
@@ -2386,7 +2673,9 @@ function renderRating(root) {
       : t('Ninguna versión con n ≥ 60 se separa de la media del corte con certeza: los intervalos se solapan.');
     g.appendChild(plotCard({
       key: 'ver', span: 'c6', title: t('Rating medio por versión de la app'),
-      sub: t('versiones con n ≥ 60 · bigote = intervalo de la media al 95 % · la línea es la media del corte'),
+      sub: verMas
+        ? t('las 12 versiones con más valoraciones ({k} más con n ≥ 60 en la tabla) · bigote = intervalo de la media al 95 % · la línea es la media del corte', { k: nf(verMas) })
+        : t('versiones con n ≥ 60 · bigote = intervalo de la media al 95 % · la línea es la media del corte'),
       insight: verIns,
       draw: groupedCols({
         groups: verRows.map(r => r.v + '\n' + t('n {n}', { n: nf(r.s.n) })),
@@ -2402,7 +2691,7 @@ function renderRating(root) {
       note: t('Las valoraciones sin versión ({n} en el corte) quedan fuera: Google Play no la reporta en una parte de los envíos y su nota es sensiblemente peor, así que mezclarlas ensuciaría la comparación. El bigote es el intervalo de la media al 95 %, calculado con la t de Student sobre el reparto completo de estrellas; no es el de Wilson, que sirve para una proporción como el % de 1-2★ y no para una media. Cuando una versión concentra la mayor parte de la base, la línea de media del corte es casi esa misma versión: la comparación que informa es entre versiones, no contra la línea.',
         { n: nf((byVer.get('') || BUCK()).reduce((x, y) => x + y, 0)) }),
       tableFn: () => table([t('Versión'), 'n', t('Rating'), t('IC 95 %'), '1-2★'],
-        verRows.map(r => [r.v, nf(r.s.n), star(r.s.avg),
+        verRowsTodas.slice().sort((a, b) => a.v.localeCompare(b.v, undefined, { numeric: true })).map(r => [r.v, nf(r.s.n), star(r.s.avg),
           r.ci ? nf(r.ci[0], 2) + ' – ' + nf(r.ci[1], 2) : '—', rpct(r.s.bad)])),
     }));
   }
@@ -2444,6 +2733,192 @@ function renderRating(root) {
 
 
   /* --- cobertura de la muestra: el aviso honesto --- */
+  /* --- series diarias de Play Console (bloque ST) ------------------------
+         Es la primera vez que el panel puede dibujar el tiempo con honestidad:
+         los informes de Play son diarios y continuos. Cuatro decisiones:
+         · Solo obedecen al RANGO DE FECHAS del corte. Idioma, dispositivo y
+           nota no filtran estas series (Play no las publica así) y la tarjeta
+           lo dice en el subtítulo para que nadie crea que sí.
+         · Semana, no día: 593 puntos diarios de nota media son ruido; la media
+           semanal enseña la forma. Cierres y ANR se normalizan por dispositivos
+           activos: 10.000 cierres con 18 millones de instalaciones no son lo
+           mismo que con 23.
+         · Un solo eje por gráfica. Cierres y ANR comparten unidad (eventos por
+           1.000 dispositivos y día); nota e instalaciones van en tarjetas aparte.
+         · Los huecos se ven: `null` parte la línea. Faltan cuatro días de agosto
+           de 2026 en cierres y no se inventan.
+         Y un aviso que va en TODAS las notas de vitals: Play publica RECUENTOS de
+         eventos. Los umbrales de Android vitals (1,09 % cierres, 0,47 % ANR) son
+         % de USUARIOS afectados: otra magnitud. Esta tasa sirve para comparar
+         semanas y versiones entre sí, no para decir si se cruza el umbral. --- */
+  if (ST.days && ST.days.length) {
+    g.appendChild(eyebrow(t('Series diarias de Play Console'), 'eb-st'));
+    const fromIso = isoOf(rstate.from), toIso = isoOf(rstate.to);
+    const idx = [];
+    ST.days.forEach((d, i) => { if (d >= fromIso && d <= toIso) idx.push(i); });
+    const STMIN = 4;   /* días con dato que necesita una semana para dibujarse */
+
+    /* semanas del rango (lunes ISO), y los índices de ST.days que caen en cada una */
+    const wk = new Map();
+    idx.forEach(i => { const k = weekOf(numOf(ST.days[i])); if (!wk.has(k)) wk.set(k, []); wk.get(k).push(i); });
+    const wkeys = [...wk.keys()].sort();
+    const wlabels = wkeys.map(k => dmy(numOf(k)));
+    const mean = arr => { const v = arr.filter(x => x !== null && Number.isFinite(x)); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; };
+    const sum  = arr => { const v = arr.filter(x => x !== null && Number.isFinite(x)); return v.length ? v.reduce((a, b) => a + b, 0) : null; };
+    /* serie semanal a partir de una diaria: f(valores del día…) por semana, o null si la semana no llega a STMIN días */
+    const weekly = (daily, f) => wkeys.map(k => { const v = wk.get(k).map(i => daily[i]).filter(x => x !== null && x !== undefined); return v.length >= STMIN ? f(v) : null; });
+    const bases  = daily => wkeys.map(k => wk.get(k).filter(i => daily[i] !== null && daily[i] !== undefined).length);
+    /* tasa diaria por 1.000 dispositivos activos, null si falta cualquiera de los dos */
+    const perMil = (ev, act) => ST.days.map((_, i) => (ev[i] === null || ev[i] === undefined || !act[i]) ? null : ev[i] / act[i] * 1000);
+    const lastFull = arr => { for (let i = arr.length - 1; i >= 0; i--) if (arr[i] !== null) return i; return -1; };
+    const OV = ST.overview;
+
+    if (wkeys.length >= 2) {
+      /* ---- nota media, total y por versión ---- */
+      const ratW = weekly(OV.rating_daily, mean);
+      /* ST.versions ya viene ordenado por volumen de valoraciones en la ventana;
+         se respeta ese orden (las versiones que importan) y solo se exige que
+         la versión tenga al menos 4 semanas de dato para que su línea diga algo.
+         Ordenar por días de dato elegía las versiones más LONGEVAS, no las más
+         relevantes. */
+      const vers = ST.versions.filter(v => idx.filter(i => v.rating_daily[i] !== null).length >= 28).slice(0, 4);
+      const COLS = ['var(--s2)', 'var(--s3)', 'var(--s4)', 'var(--s5)'];
+      const series = [{ name: t('Todas las versiones'), color: 'var(--s1)', emph: true, values: ratW }]
+        .concat(vers.map((v, k) => ({ name: v.name, color: COLS[k % COLS.length], values: weekly(v.rating_daily, mean) })));
+      const lf = lastFull(ratW), drawn = ratW.filter(x => x !== null);
+      let lo = -1; ratW.forEach((x, i) => { if (x !== null && (lo < 0 || x < ratW[lo])) lo = i; });
+      const ratIns = lf >= 0 && lo >= 0
+        ? t('Última semana completa: {a}. La semana más baja del rango fue la del {d}, con {b}.',
+            { a: star(ratW[lf]), d: wlabels[lo], b: star(ratW[lo]) })
+        : t('No hay semanas completas en el rango.');
+      g.appendChild(plotCard({
+        key: 'st-rating', span: 'c12', title: t('Nota media diaria de Play, por semana'),
+        insight: ratIns,
+        sub: t('media de las medias diarias que publica Play · {n} semanas · solo obedece al rango de fechas del corte', { n: nf(drawn.length) }),
+        legend: legend(series.map(x => ({ color: x.color, name: x.name })), 'line'),
+        draw: lineChart({
+          x: wlabels, series, bases: series.map(x => bases(x === series[0] ? OV.rating_daily : vers[series.indexOf(x) - 1].rating_daily)),
+          thin: series.map(() => wkeys.map(() => false)), bands: [],
+          fmt: v => nf(v, 2), height: 300, padR: 66, yMax: 5,
+          alt: t('Nota media diaria de Play, por semana') + '. ' + ratIns,
+        }),
+        note: t('Cada punto es la media de las medias diarias que Play publica para esa semana, sin ponderar por volumen: Play no da el recuento diario en este informe. Las versiones son las cuatro con más días de dato en el rango. Una semana necesita al menos {n} días con dato para dibujarse.', { n: STMIN }),
+        tableFn: () => table([t('Semana del')].concat(series.map(x => x.name)),
+          wkeys.map((k, j) => [wlabels[j]].concat(series.map(x => x.values[j] === null ? '—' : star(x.values[j]))))),
+      }));
+
+      /* ---- cierres y ANR por 1.000 dispositivos activos y día ---- */
+      const crD = perMil(OV.crashes, OV.active_devices), anD = perMil(OV.anrs, OV.active_devices);
+      const crW = weekly(crD, mean), anW = weekly(anD, mean);
+      let pk = -1; crW.forEach((x, i) => { if (x !== null && (pk < 0 || x > crW[pk])) pk = i; });
+      const last4 = arr => mean(arr.slice(-4)), prev4 = arr => mean(arr.slice(-8, -4));
+      const a4 = last4(anW), p4 = prev4(anW);
+      const vitIns = pk >= 0
+        ? t('Pico de cierres la semana del {d}: {c} por 1.000 dispositivos y día. ANR en las últimas 4 semanas: {a}, frente a {p} en las 4 anteriores.',
+            { d: wlabels[pk], c: nf(crW[pk], 1), a: a4 === null ? '—' : nf(a4, 1), p: p4 === null ? '—' : nf(p4, 1) })
+        : t('Sin datos de cierres en el rango.');
+      g.appendChild(plotCard({
+        key: 'st-vitals', span: 'c12', title: t('Cierres y ANR por 1.000 dispositivos activos y día'),
+        insight: vitIns,
+        sub: t('media semanal de la tasa diaria · eventos, no usuarios · solo obedece al rango de fechas del corte'),
+        legend: legend([{ color: 'var(--s3)', name: t('Cierres') }, { color: 'var(--s5)', name: 'ANR' }], 'line'),
+        draw: lineChart({
+          x: wlabels,
+          series: [{ name: t('Cierres'), color: 'var(--s3)', emph: true, values: crW }, { name: 'ANR', color: 'var(--s5)', values: anW }],
+          bases: [bases(crD), bases(anD)], thin: [wkeys.map(() => false), wkeys.map(() => false)], bands: [],
+          fmt: v => nf(v, 1), height: 300, padR: 66, yZero: true,
+          alt: t('Cierres y ANR por 1.000 dispositivos activos y día') + '. ' + vitIns,
+        }),
+        note: t('Play publica RECUENTOS diarios de cierres y ANR; aquí se dividen entre los dispositivos activos de ese día. Los umbrales de Android vitals ({c} % de cierres, {a} % de ANR) son porcentaje de USUARIOS afectados: otra magnitud, así que esta tasa sirve para comparar semanas y versiones entre sí, no para decir si se cruza el umbral. Los huecos son días sin informe y no se rellenan.',
+          { c: nf(ST.meta.thresholds.crash_pct, 2), a: nf(ST.meta.thresholds.anr_pct, 2) }),
+        tableFn: () => table([t('Semana del'), t('Cierres /1000·día'), t('ANR /1000·día'), t('Días con dato')],
+          wkeys.map((k, j) => [wlabels[j], crW[j] === null ? '—' : nf(crW[j], 2), anW[j] === null ? '—' : nf(anW[j], 2), nf(bases(crD)[j])])),
+      }));
+
+      /* ---- ANR por versión, últimas 8 semanas del rango ---- */
+      const tail = idx.slice(-56);
+      const anrVerRows = ST.versions.map(v => {
+        const ev = sum(tail.map(i => v.anrs[i])), act = mean(tail.map(i => v.active_devices[i]));
+        const days = tail.filter(i => v.anrs[i] !== null && v.active_devices[i]).length;
+        return { v, ev, act, days, rate: (ev !== null && act) ? ev / act / Math.max(days, 1) * 1000 : null };
+      }).filter(r => r.rate !== null && r.days >= 14 && r.act >= 50000).sort((a, b) => b.rate - a.rate).slice(0, 8);
+      const totAnr = sum(tail.map(i => OV.anrs[i]));
+      if (anrVerRows.length >= 2) {
+        const anrVerIns = t('{v} es la versión con más ANR por dispositivo: {r} por 1.000 y día, el {p} de todos los ANR del periodo.',
+          { v: anrVerRows[0].v.name, r: nf(anrVerRows[0].rate, 1), p: totAnr ? rpct(anrVerRows[0].ev / totAnr * 100, 0) : '—' });
+        g.appendChild(plotCard({
+          key: 'st-anr-ver', span: 'c4', title: t('ANR por versión'),
+          insight: anrVerIns,
+          sub: t('últimas 8 semanas del rango · versiones con ≥ 50.000 dispositivos activos y ≥ 14 días de dato'),
+          draw: barsH({
+            rows: anrVerRows.map(r => ({
+              label: r.v.name, value: r.rate, color: 'var(--s5)',
+              rows: [{ color: 'var(--deemph)', value: nf(r.act), name: t('dispositivos activos (media)') },
+                     { color: 'var(--deemph)', value: totAnr ? rpct(r.ev / totAnr * 100, 0) : '—', name: t('de todos los ANR') }],
+            })),
+            fmt: v => nf(v, 1), labelW: 62, valW: 56, unit: t('ANR /1000·día'),
+            alt: t('ANR por versión') + '. ' + anrVerIns,
+          }),
+          note: t('La barra es tasa, no volumen: una versión con más dispositivos acumula más ANR aunque funcione igual. El % de todos los ANR va en el tooltip para tener las dos cosas sin mezclarlas.'),
+          tableFn: () => table([t('Versión'), t('ANR /1000·día'), t('Dispositivos activos'), t('ANR totales'), t('% del total')],
+            anrVerRows.map(r => [r.v.name, nf(r.rate, 2), nf(r.act), nf(r.ev), totAnr ? rpct(r.ev / totAnr * 100) : '—'])),
+        }));
+      }
+
+      /* ---- patrón por día de la semana: el hallazgo de los sábados ---- */
+      const tail84 = idx.slice(-84);
+      const DOW = [t('lun'), t('mar'), t('mié'), t('jue'), t('vie'), t('sáb'), t('dom')];
+      const byDow = [0, 1, 2, 3, 4, 5, 6].map(() => []);
+      tail84.forEach(i => { if (anD[i] !== null) { const d = new Date(ST.days[i] + 'T00:00:00Z').getUTCDay(); byDow[(d + 6) % 7].push(anD[i]); } });
+      const dowVals = byDow.map(a => mean(a));
+      if (dowVals.filter(x => x !== null).length === 7) {
+        let hiD = 0, loD = 0; dowVals.forEach((x, i) => { if (x > dowVals[hiD]) hiD = i; if (x < dowVals[loD]) loD = i; });
+        const dowIns = t('El {a} tiene {x} ANR por 1.000 y día frente a {y} el {b}: ×{r}.',
+          { a: DOW[hiD], x: nf(dowVals[hiD], 1), b: DOW[loD], y: nf(dowVals[loD], 1), r: nf(dowVals[hiD] / dowVals[loD], 1) });
+        g.appendChild(plotCard({
+          key: 'st-dow', span: 'c4', title: t('ANR por día de la semana'),
+          insight: dowIns,
+          sub: t('media de las últimas 12 semanas del rango · por 1.000 dispositivos activos y día'),
+          draw: groupedCols({
+            groups: DOW, groupIds: null,
+            series: [{ name: 'ANR', color: 'var(--s5)', values: dowVals, bases: byDow.map(a => a.length) }],
+            height: 232, fmt: v => nf(v, 1), alt: t('ANR por día de la semana') + '. ' + dowIns,
+          }),
+          note: t('Si los ANR se concentran en fin de semana, el patrón sigue al calendario de partidos: apunta a saturación bajo carga, no a un modelo de teléfono. Un problema de dispositivo se repartiría igual todos los días.'),
+          tableFn: () => table([t('Día'), t('ANR /1000·día'), t('Días con dato')],
+            DOW.map((d, i) => [d, nf(dowVals[i], 2), nf(byDow[i].length)])),
+        }));
+      }
+
+      /* ---- altas y bajas de usuario por semana ---- */
+      const inW = weekly(OV.user_installs, sum), unW = weekly(OV.user_uninstalls, sum);
+      const net4 = (() => { const a = inW.slice(-4).filter(x => x !== null), b = unW.slice(-4).filter(x => x !== null); return (a.length && b.length) ? a.reduce((x, y) => x + y, 0) - b.reduce((x, y) => x + y, 0) : null; })();
+      const instIns = net4 === null ? t('Sin datos de instalaciones en el rango.')
+        : t('Saldo de las últimas 4 semanas: {n} usuarios ({s}).', { n: nf(Math.abs(net4)), s: net4 >= 0 ? t('más altas que bajas') : t('más bajas que altas') });
+      g.appendChild(plotCard({
+        key: 'st-installs', span: 'c4', title: t('Altas y bajas de usuario por semana'),
+        insight: instIns,
+        sub: t('suma semanal · solo obedece al rango de fechas del corte'),
+        legend: legend([{ color: 'var(--s1)', name: t('Altas') }, { color: 'var(--s3)', name: t('Bajas') }], 'line'),
+        draw: lineChart({
+          x: wlabels,
+          series: [{ name: t('Altas'), color: 'var(--s1)', emph: true, values: inW }, { name: t('Bajas'), color: 'var(--s3)', values: unW }],
+          bases: [bases(OV.user_installs), bases(OV.user_uninstalls)], thin: [wkeys.map(() => false), wkeys.map(() => false)], bands: [],
+          fmt: v => compact(v), height: 232, padR: 60, yZero: true,
+          alt: t('Altas y bajas de usuario por semana') + '. ' + instIns,
+        }),
+        note: t('Altas y bajas de usuario según Play (no de dispositivo). Una semana incompleta al final del rango suma menos: es el retraso de publicación, no una caída.'),
+        tableFn: () => table([t('Semana del'), t('Altas'), t('Bajas'), t('Saldo')],
+          wkeys.map((k, j) => [wlabels[j], inW[j] === null ? '—' : nf(inW[j]), unW[j] === null ? '—' : nf(unW[j]),
+                               (inW[j] === null || unW[j] === null) ? '—' : signed(inW[j] - unW[j], 0)])),
+      }));
+    } else {
+      g.appendChild(emptyCut(t('El rango no cubre dos semanas de series de Play'),
+        t('Las series diarias de Play Console van de {a} a {b}. Amplía el rango de fechas para dibujarlas.',
+          { a: ST.meta.from ? dmy(numOf(ST.meta.from)) : '—', b: ST.meta.to ? dmy(numOf(ST.meta.to)) : '—' })));
+    }
+  }
+
   g.appendChild(eyebrow(t('Calidad de la muestra'), 'eb-sample'));
   const byWeek = bucketBy(ids, i => weekOf(R_dayn[i]));
   const weeks = [...byWeek.entries()].map(([w, a]) => ({ w, s: statOf(a) })).sort((a, b) => a.w.localeCompare(b.w));
@@ -2455,17 +2930,19 @@ function renderRating(root) {
     key: 'cov', span: 'c6', title: t('Valoraciones recogidas por semana'),
     insight: covIns,
     sub: t('valoraciones por semana · {n} meses de informe · el mes en curso está incompleto: Play publica con 3-7 días de retraso', { n: RD.meta.batches.length }),
-    draw: barsH({
-      rows: weeks.map(r => ({
-        label: dmy(numOf(r.w)), value: r.s.n,
-        color: r.s.n >= 100 ? 'var(--s1)' : 'var(--deemph)',
-        rows: [{ color: 'var(--deemph)', value: star(r.s.avg), name: t('rating') }],
-      })),
-      fmt: v => nf(v), labelW: 52, valW: 62, unit: t('valoraciones'),
+    /* Con ingesta continua hay 141 semanas en la ventana y seguirán creciendo:
+       141 barras son una tarjeta de cuatro metros. Una línea con los mismos datos
+       cabe en la altura de siempre y sigue marcando en gris las semanas cortas
+       (puntos huecos) a través de `thin`. */
+    draw: lineChart({
+      x: weeks.map(r => dmy(numOf(r.w))),
+      series: [{ name: t('valoraciones'), color: 'var(--s1)', emph: true, values: weeks.map(r => r.s.n) }],
+      bases: [weeks.map(r => r.s.n)], thin: [weeks.map(r => r.s.n < 100)], bands: [],
+      fmt: v => compact(v), height: 232, padR: 60, yZero: true,
       alt: t('Valoraciones recogidas por semana') + '. ' + covIns,
     }),
     legend: legend([{ name: t('semana con muestra suficiente (n ≥ 100)'), color: 'var(--s1)' },
-                    { name: t('cobertura parcial: no leer tendencia'), color: 'var(--deemph)' }]),
+                    { name: t('punto hueco: semana corta (n < 100), normalmente la última por el retraso de Play'), color: 'var(--deemph)' }], 'line'),
     note: (() => {
       /* Con ingesta continua desde los informes mensuales de Play, la cobertura ya
          no es el problema que era: casi todas las semanas superan de largo las 100
@@ -2792,6 +3269,108 @@ function renderReviews(root) {
   }
 
 
+
+  /* --- tema x versión, y qué queja es NUEVA en la última versión -------------
+         Estaban en el encargo v0.6 y quedaron bloqueadas: con 710 textos, 441
+         eran de una sola versión. Con 28.916 la base existe. Dos decisiones:
+         · Se mide por versión, no por mes: el mes mezcla usuarios de dos
+           versiones; la versión es la dimensión con la que se atribuye.
+         · Mismo umbral por celda (MIN_CELL) que en el mapa por idioma: pintar
+           un porcentaje sobre dos reviews es precisión inventada. --- */
+  const verBase = {};
+  rSelText({ topic: 1, sent: 1 }).forEach(ti => {
+    const v = RD.vers[R_ver[RD.rev[ti].n]]; if (v) verBase[v] = (verBase[v] || 0) + 1;
+  });
+  const verNum = (a, b) => a.localeCompare(b, undefined, { numeric: true });
+  const verCols = Object.keys(verBase).filter(v => verBase[v] >= 30)
+    .sort((a, b) => verBase[b] - verBase[a]).slice(0, 8).sort(verNum);
+  if (verCols.length >= 2 && topicsAll.length) {
+    const cellV = {};
+    topicsAll.forEach(x => verCols.forEach(v => {
+      cellV[x + '|' + v] = negAll.filter(ti => RD.vers[R_ver[RD.rev[ti].n]] === v && RD.rev[ti].g.indexOf(x) >= 0).length;
+    }));
+    const tvTopics = topicsAll.filter(x => verCols.some(v => cellV[x + '|' + v] >= MIN_CELL));
+    const tvRows = tvTopics.map(x => ({
+      id: x, label: topicLabel(x),
+      values: verCols.map(v => cellV[x + '|' + v] >= MIN_CELL ? cellV[x + '|' + v] / verBase[v] * 100 : null),
+    }));
+    /* titular: la celda que más se separa de la media del tema entre versiones */
+    let best = null;
+    tvRows.forEach(r => {
+      const vals = r.values.filter(x => x !== null); if (vals.length < 2) return;
+      const m = vals.reduce((a, b) => a + b, 0) / vals.length;
+      r.values.forEach((x, j) => { if (x !== null && (!best || x - m > best.d)) best = { d: x - m, r, j, x, m }; });
+    });
+    const tvIns = best
+      ? t('{tema} en la {v}: {p} de sus reviews lo critican con 1-2★, frente al {m} de media entre versiones.',
+          { tema: best.r.label, v: verCols[best.j], p: rpct(best.x, 1), m: rpct(best.m, 1) })
+      : t('Ninguna celda reúne {n} reviews de 1-2★: no hay nada que comparar entre versiones.', { n: MIN_CELL });
+    g.appendChild(plotCard({
+      key: 'topic-ver', span: 'c12', title: t('Qué duele en cada versión'),
+      insight: tvIns,
+      sub: t('% de las reviews de la versión que critican ese tema con 1-2★ · las 8 versiones con más texto (≥ 30 reviews) · celda en blanco por debajo de {n}', { n: MIN_CELL }),
+      draw: heatmap({
+        rows: tvRows, cols: verCols.map(v => v + ' (' + nf(verBase[v]) + ')'),
+        labelW: 178, rowH: 26, showValues: true, fmt: v => nf(v, 1), unit: t('% de la versión'),
+        alt: t('Qué duele en cada versión') + '. ' + tvIns,
+      }),
+      legend: scaleLegend(0, Math.max(...tvRows.flatMap(r => r.values.filter(v => v !== null)), 1), v => nf(v, 0) + ' %'),
+      note: t('El numerador son reviews de 1-2★ que mencionan el tema; el denominador, todas las reviews con texto de esa versión. Comparar por versión y no por mes es lo que permite atribuir una queja a una release: un mes mezcla usuarios que aún no han actualizado. Las columnas van en orden de versión, no de volumen.'),
+      tableFn: () => table([t('Tema')].concat(verCols.map(v => v + ' (n=' + nf(verBase[v]) + ')')),
+        topicsAll.map(x => [topicLabel(x)].concat(verCols.map(v => {
+          const k = cellV[x + '|' + v];
+          return k >= MIN_CELL ? rpct(k / verBase[v] * 100, 1) + ' (' + nf(k) + ')' : t('{k} · base corta', { k: nf(k) });
+        })))),
+    }));
+
+    /* ---- lo nuevo: temas cuya tasa de crítica en la ÚLTIMA versión queda, con
+            certeza, por encima de la de las versiones anteriores del corte ---- */
+    /* «Última» es la versión MÁS RECIENTE con base suficiente (≥ 30 reviews con
+       texto), no la última de las ocho con más volumen: lo que se quiere saber es
+       qué trae la release nueva, aunque aún tenga menos texto que las viejas. */
+    const conBase = Object.keys(verBase).filter(v => verBase[v] >= 30).sort(verNum);
+    const ultima = conBase[conBase.length - 1];
+    const previas = conBase.filter(v => v !== ultima);
+    if (cellV[topicsAll[0] + '|' + ultima] === undefined) topicsAll.forEach(x => { cellV[x + '|' + ultima] = negAll.filter(ti => RD.vers[R_ver[RD.rev[ti].n]] === ultima && RD.rev[ti].g.indexOf(x) >= 0).length; });
+    previas.forEach(v => { if (cellV[topicsAll[0] + '|' + v] === undefined) topicsAll.forEach(x => { cellV[x + '|' + v] = negAll.filter(ti => RD.vers[R_ver[RD.rev[ti].n]] === v && RD.rev[ti].g.indexOf(x) >= 0).length; }); });
+    const prevBase = previas.reduce((a, v) => a + verBase[v], 0);
+    const nuevos = topicsAll.map(x => {
+      const k = cellV[x + '|' + ultima], kp = previas.reduce((a, v) => a + cellV[x + '|' + v], 0);
+      if (k < MIN_CELL || !prevBase) return null;
+      const ci = wilson(k, verBase[ultima]), pRef = kp / prevBase * 100;
+      return { x, k, rate: k / verBase[ultima] * 100, lo: ci[0] * 100, hi: ci[1] * 100, ref: pRef, kp };
+    }).filter(r => r && r.lo > r.ref).sort((a, b) => (b.rate - b.ref) - (a.rate - a.ref));
+    const nvIns = nuevos.length
+      ? t('{tema} sube en la {v}: {p} frente al {r} en las versiones anteriores, y el intervalo no toca la referencia.',
+          { tema: topicLabel(nuevos[0].x), v: ultima, p: rpct(nuevos[0].rate, 1), r: rpct(nuevos[0].ref, 1) })
+      : t('Ningún tema sube con certeza en la {v} respecto a las versiones anteriores del corte.', { v: ultima });
+    g.appendChild(plotCard({
+      key: 'topic-new', span: 'c6', title: t('Qué sube en la última versión'),
+      insight: nvIns,
+      sub: t('{v} frente a {n} versiones anteriores · solo temas cuyo intervalo de Wilson al 95 % queda entero por encima de la referencia',
+        { v: ultima, n: previas.length }),
+      draw: barsH({
+        rows: (nuevos.length ? nuevos : []).slice(0, 8).map(r => ({
+          id: r.x, label: topicLabel(r.x), value: r.rate, ci: [r.lo, r.hi], color: 'var(--div-neg)',
+          rows: [{ color: 'var(--deemph)', value: rpct(r.ref, 1), name: t('en versiones anteriores') },
+                 { color: 'var(--deemph)', value: nf(r.k), name: t('reviews 1-2★ en la última') }],
+        })),
+        fmt: v => nf(v, 1) + ' %', labelW: 178, valW: 62, unit: t('% de la versión'),
+        alt: t('Qué sube en la última versión') + '. ' + nvIns,
+      }),
+      note: nuevos.length
+        ? t('La misma guarda que en «Dispositivos peores que la media»: un tema solo aparece si su intervalo al 95 % queda entero por encima de la tasa de las versiones anteriores. Sin esa guarda saldrían temas que solo parecen nuevos por tener pocas reviews.')
+        : t('Que no salga nada no significa que no pase nada: significa que con las reviews que hay no se puede separar de las versiones anteriores con certeza.'),
+      tableFn: () => table([t('Tema'), t('Última versión'), t('IC 95 %'), t('Versiones anteriores'), t('Reviews 1-2★')],
+        topicsAll.map(x => {
+          const k = cellV[x + '|' + ultima], kp = previas.reduce((a, v) => a + cellV[x + '|' + v], 0);
+          const ci = wilson(k, verBase[ultima]);
+          return [topicLabel(x), k >= MIN_CELL ? rpct(k / verBase[ultima] * 100, 1) : t('{k} · base corta', { k: nf(k) }),
+                  k >= MIN_CELL ? nf(ci[0] * 100, 1) + ' – ' + nf(ci[1] * 100, 1) + ' %' : '—',
+                  prevBase ? rpct(kp / prevBase * 100, 1) : '—', nf(k)];
+        })),
+    }));
+  }
 
   /* --- verbatims --- */
   g.appendChild(eyebrow(t('Las reviews, una por una'), 'eb-verb'));
