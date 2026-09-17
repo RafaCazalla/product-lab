@@ -125,10 +125,19 @@ def serie(con, metric, dim, dim_value, field, days):
     m = dict(con.execute("""SELECT date, value FROM stats
                             WHERE metric=? AND dim=? AND dim_value=? AND field=?""",
                          (metric, dim, dim_value, field)).fetchall())
+    # Play publica 0 como nota media el dia en que una version no recibe ninguna
+    # valoracion. Una nota va de 1 a 5: el 0 no es un valor, es "sin dato", y si
+    # se dejara pasar tiraria hacia abajo cualquier media semanal de una version
+    # con poco volumen. Se convierte en null aqui, en el origen, para que ninguna
+    # tarjeta tenga que acordarse de filtrarlo.
+    es_nota = field in ('daily_avg', 'total_avg')
     out = []
     for d in days:
         v = m.get(d)
-        out.append(None if v is None else (round(v, 4) if field in ('daily_avg', 'total_avg') else int(v)))
+        if v is None or (es_nota and v <= 0):
+            out.append(None)
+        else:
+            out.append(round(v, 4) if es_nota else int(v))
     return out
 
 
