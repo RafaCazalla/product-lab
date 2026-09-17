@@ -345,6 +345,44 @@ Es el único origen de datos del panel. Su estado es `rstate`, y la barra de fil
 y tema. Los dos últimos solo filtran texto, así que `selectTab()` oculta esos controles
 (`.rev-only`) fuera de Reviews. `state` guarda **solo** la pestaña abierta.
 
+## Filtrar pulsando en una gráfica
+
+En Reviews, las gráficas de tema son accionables: pulsar lleva el corte a la lista de
+texto de abajo, que es la pregunta que se hace mirándolas («enséñame lo que dicen los que
+se quejan de esto»).
+
+| Gráfica | Zona | Corte que abre |
+|---|---|---|
+| `topics-sign` | la **etiqueta** del tema | ese tema, todas las notas |
+| `topics-sign` | cada **segmento** de color | ese tema **+** ese signo (1-2★ / 3★ / 4-5★) |
+| `acid` | cada columna | ese tema **+** 1-2★, que es lo que mide la barra |
+| `lang-topics` | cada celda | ese tema **+** ese idioma **+** 1-2★ |
+
+Las reglas, que valen para cualquier gráfica que se haga accionable después:
+
+- **Se filtra con `rPick(patch)`, nunca tocando `rstate` a mano.** `rPick` mueve el estado
+  **y los desplegables a la vez**: si la barra de filtros no refleja el corte, quien pulsa
+  ve la lista filtrada y no sabe ni por qué ni cómo deshacerlo.
+- **`rToggle(tema, signo)` para las que alternan**: pulsar dos veces lo mismo deshace el
+  filtro. Quien filtró con el ratón espera desfiltrar igual, y sin eso la única salida
+  sería el desplegable.
+- **La vía de teclado no es opcional.** Las zonas son `<rect class="hit pickhit">` con
+  `tabindex="0"`, responden a Enter y espacio, y tienen foco visible. El cursor es la
+  única señal de que la gráfica es accionable: no se quita.
+- **Las primitivas no saben de filtros.** `stackedBarsH`, `groupedCols` y `heatmap`
+  aceptan `onPick` y los identificadores (`r.id`, `groupIds`, `colIds`) y no hacen nada
+  más; sin `onPick` se comportan exactamente como antes. La traducción de «qué se ha
+  pulsado» a «qué corte se abre» vive en la tarjeta, que es quien sabe qué significa su
+  propio eje.
+
+**El tropiezo que hay que conocer antes de tocar esto:** `renderActive()` **no repinta de
+forma síncrona** cuando ya hay contenido —usa `setTimeout(draw, 16)` para no dar el salto
+de layout—, así que justo después de llamarlo el DOM sigue siendo el viejo. Por eso el
+desplazamiento hasta el módulo de texto va dentro de un `setTimeout`: apuntar al nodo de
+antes es apuntar a un nodo que se descarta. Y por eso una prueba en navegador que pulse y
+lea el DOM en la misma vuelta **da un falso negativo**: parece que el filtro no funciona
+cuando lo que pasa es que aún no se ha repintado.
+
 ## La encuesta (pestaña Survey)
 
 Segunda fuente. Dos formatos previstos:

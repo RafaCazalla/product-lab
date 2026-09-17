@@ -255,6 +255,11 @@ svg text { font-family: Asap, system-ui, sans-serif; }
 .hit { fill: transparent; cursor: crosshair; }
 .hit:focus { outline: none; }
 .cellhit { cursor: default; }
+/* Zonas que filtran al pulsarlas. El puntero es la única señal de que la
+   gráfica es accionable, así que no se quita; y el foco tiene que verse,
+   porque estas zonas son la vía de teclado para el mismo filtro. */
+.pickhit { cursor: pointer; }
+.pickhit:focus { outline: 2px solid var(--brand-hi); outline-offset: -2px; }
 .stale { opacity: .38; transition: opacity .12s; }
 
 #tip {
@@ -699,6 +704,35 @@ function stackedBarsH(cfg) {
       hit.addEventListener('pointermove', show); hit.addEventListener('pointerleave', tipHide);
       hit.addEventListener('focus', () => show()); hit.addEventListener('blur', tipHide);
       svg.appendChild(hit);
+      /* Filtrar pulsando. Va DESPUÉS del hit de fila para quedar por encima:
+         la etiqueta filtra por el tema entero y cada segmento por tema + signo,
+         que es la pregunta que se hace mirando esta gráfica («enséñame lo que
+         dicen los que se quejan de esto»). Sin `onPick` no se dibuja nada de
+         esto y la gráfica se comporta igual que antes. */
+      if (cfg.onPick && r.id !== undefined) {
+        const pick = (keyId, label, box) => {
+          const p = S('rect', Object.assign({ class: 'hit pickhit', tabindex: 0,
+            'aria-label': label }, box));
+          const fire = ev => { ev.preventDefault(); tipHide(); cfg.onPick(r.id, keyId); };
+          p.addEventListener('click', fire);
+          p.addEventListener('keydown', ev => { if (ev.key === 'Enter' || ev.key === ' ') fire(ev); });
+          p.addEventListener('pointermove', show); p.addEventListener('pointerleave', tipHide);
+          p.addEventListener('focus', () => show()); p.addEventListener('blur', tipHide);
+          svg.appendChild(p);
+        };
+        pick(null, t('Ver solo {a}', { a: r.label }),
+          { x: 0, y: i * rowH, width: labelW, height: rowH });
+        let px = labelW;
+        drawn.forEach((d, di) => {
+          const segW = d.v / max * iw;
+          const wide = Math.max(1, segW - (di === drawn.length - 1 ? 0 : 2));
+          if (wide >= 6) {
+            pick(d.k.id, t('Ver solo {a} · {b} ({n})', { a: r.label, b: d.k.name, n: fmt(d.v) }),
+              { x: px, y: y, width: wide, height: bh });
+          }
+          px += segW;
+        });
+      }
     });
     return svg;
   };
@@ -784,7 +818,16 @@ function heatmap(cfg) {
         const fill = neutral ? 'var(--sunken)' : SEQ[b];
         svg.appendChild(S('rect', { x, y, width: Math.max(1, cw - gap), height: rowH - gap, fill, rx: 1 }));
         if (cfg.showValues && cw > 34) svg.appendChild(S('text', { x: x + (cw - gap) / 2, y: y + rowH / 2 + 3.5, 'text-anchor': 'middle', style: `font-size:11px;font-variant-numeric:tabular-nums;fill:${neutral ? 'var(--ink-3)' : inkOn(fill)}` }, fmt(v)));
-        const hit = S('rect', { x, y, width: Math.max(1, cw - gap), height: rowH - gap, class: 'hit cellhit', tabindex: 0, 'aria-label': `${r.label}, ${cfg.cols[ci]}: ${fmt(v)}` });
+        const pickable = cfg.onPick && r.id !== undefined && cfg.colIds && cfg.colIds[ci] !== undefined;
+        const hit = S('rect', { x, y, width: Math.max(1, cw - gap), height: rowH - gap,
+          class: 'hit ' + (pickable ? 'pickhit' : 'cellhit'), tabindex: 0,
+          'aria-label': (pickable ? t('Ver solo {a} · {b}', { a: r.label, b: cfg.cols[ci] }) + '. ' : '')
+            + `${r.label}, ${cfg.cols[ci]}: ${fmt(v)}` });
+        if (pickable) {
+          const fire = ev => { ev.preventDefault(); tipHide(); cfg.onPick(r.id, cfg.colIds[ci]); };
+          hit.addEventListener('click', fire);
+          hit.addEventListener('keydown', ev => { if (ev.key === 'Enter' || ev.key === ' ') fire(ev); });
+        }
         const show = ev => { const bb = svg.getBoundingClientRect(); tipShow(ev?.clientX ?? bb.left + x, ev?.clientY ?? bb.top + y, r.label + ' · ' + cfg.cols[ci], [{ color: fill, value: fmt(v), name: cfg.unit || '' }]); };
         hit.addEventListener('pointermove', show); hit.addEventListener('pointerleave', tipHide);
         hit.addEventListener('focus', () => show()); hit.addEventListener('blur', tipHide);
@@ -919,7 +962,16 @@ function groupedCols(cfg) {
         }
         const ariaCi = ci ? ', ' + t('IC 95 %') + ' ' + fmt(ci[0]) + ' – ' + fmt(ci[1]) : '';
         const ariaBase = s.bases ? ', n ' + nf(s.bases[gi]) : '';
-        const hit = S('rect', { x: x - 1, y: pad.t, width: bw + 2, height: ih, class: 'hit cellhit', tabindex: 0, 'aria-label': `${g}, ${s.name}: ${fmt(v)}${ariaCi}${ariaBase}` });
+        const pickable = cfg.onPick && cfg.groupIds && cfg.groupIds[gi] !== undefined;
+        const hit = S('rect', { x: x - 1, y: pad.t, width: bw + 2, height: ih,
+          class: 'hit ' + (pickable ? 'pickhit' : 'cellhit'), tabindex: 0,
+          'aria-label': (pickable ? t('Ver solo {a}', { a: g.replace('\n', ' ').trim() }) + '. ' : '')
+            + `${g.replace('\n', ' ')}, ${s.name}: ${fmt(v)}${ariaCi}${ariaBase}` });
+        if (pickable) {
+          const fire = ev => { ev.preventDefault(); tipHide(); cfg.onPick(cfg.groupIds[gi]); };
+          hit.addEventListener('click', fire);
+          hit.addEventListener('keydown', ev => { if (ev.key === 'Enter' || ev.key === ' ') fire(ev); });
+        }
         const show = ev => {
           const b = svg.getBoundingClientRect();
           const rows = series.map(ss => ({ color: ss.color, value: fmt(ss.values[gi]), name: ss.name }));
@@ -1233,16 +1285,12 @@ const I18N = {
       'Mentions of advertising by Android version',
     'Motivo más citado':
       'Most cited reason',
-    'Motivos que aparecen juntos':
-      'Reasons that turn up together',
     'Ninguna respuesta cumple estos filtros. Prueba a ampliar el rango de fechas o a quitar el filtro de tema.':
       'No answer matches these filters. Try widening the date range or dropping the topic filter.',
     'Ningún tema identificado en este corte':
       'No topic identified in this cut',
     'Número de respuestas de la encuesta recogidas cada mes':
       'Number of survey answers collected each month',
-    'Pares de motivos citados en la misma respuesta':
-      'Pairs of reasons cited in the same answer',
     'Personas distintas':
       'Distinct people',
     'Por eso esta pestaña no dibuja ninguna serie temporal ni compara un mes con otro: la diferencia de volumen entre meses es de recogida, no de opinión.':
@@ -1267,8 +1315,6 @@ const I18N = {
       'Only the last box is measured. Without the first three there is no rate to be had: this view says what the people who answer complain about, never how many people complain. And whoever answers had already said they don\'t like the app, so the sample is negative by construction, not by chance.',
     'Survey':
       'Survey',
-    'Un par frecuente sugiere que las dos cosas se viven como un mismo problema, no como dos.':
-      'A frequent pair suggests the two things are experienced as one problem, not two.',
     'Vieron el aviso':
       'Saw the prompt',
     'Vieron la encuesta':
@@ -1281,8 +1327,6 @@ const I18N = {
       'the survey does not arrive at a steady rate',
     'pregunta: «{q}»':
       'question: “{q}”',
-    'respuestas que mencionan los dos temas':
-      'answers that mention both topics',
     'sin tema identificado':
       'no topic identified',
     'solo versiones con {n} respuestas o más':
@@ -1293,8 +1337,6 @@ const I18N = {
       '{n} answered more than once',
     '{n} respuestas con contenido · una respuesta puede llevar varios temas, así que los porcentajes suman más de 100':
       '{n} answers with content · one answer can carry several topics, so the percentages add up to more than 100',
-    '{n} respuestas mencionan {a} y {b} en la misma frase':
-      '{n} answers mention {a} and {b} in the same sentence',
     '{n} respuestas pasan el corte':
       '{n} answers match this cut',
     '{p} de las respuestas cae en {m}, así que dos meses no son muestras comparables':
@@ -1655,6 +1697,12 @@ const I18N = {
       '{l}: {tema} ({p}, {k} reviews)',
     '{k} · base corta':
       '{k} · base too small',
+    'Ver solo {a}':
+      'Show only {a}',
+    'Ver solo {a} · {b}':
+      'Show only {a} · {b}',
+    'Ver solo {a} · {b} ({n})':
+      'Show only {a} · {b} ({n})',
     'Qué duele en cada idioma':
       'What hurts in each language',
     '% de las reviews del idioma que critican ese tema con 1-2★':
@@ -1667,14 +1715,6 @@ const I18N = {
       'reviews',
     'con fricción':
       'with friction',
-    'Cómo se mueve cada tema por mes':
-      'How each topic moves by month',
-    '% de las reviews del mes que critican ese tema con 1-2★':
-      '% of that month’s reviews criticising the topic at 1-2★',
-    '% del mes':
-      '% of the month',
-    'Por mes y no por semana a propósito: la recolección vino en lotes irregulares y una serie semanal mostraría el calendario del volcado, no el comportamiento del usuario. Aun así, la comparación entre meses es indicativa, no una tendencia medida.':
-      'By month and not by week on purpose: collection came in irregular batches, and a weekly series would show the dump schedule rather than user behaviour. Even so, comparing months is indicative, not a measured trend.',
     'Las reviews, una por una':
       'The reviews, one by one',
     'Más recientes':
@@ -1799,8 +1839,6 @@ const I18N = {
       '{tema} is the most mentioned ({n}); {p} of its mentions are 1-2★.',
     '{tema} es el más ácido: {p} de sus menciones son de 1-2★.':
       '{tema} is the most acidic: {p} of its mentions are 1-2★.',
-    '{l}: {tema} ({p})':
-      '{l}: {tema} ({p})',
     'valoraciones por cada nota, de 5★ a 1★':
       'ratings at each score, 5★ down to 1★',
     'Volumen absoluto, no tasa: el idioma con más valoraciones tiende a acumular más quejas aunque su tasa sea mejor. La tasa está en la tarjeta de al lado.':
@@ -1837,12 +1875,6 @@ const I18N = {
       'Composition among those who answer, never a rate over the user base: we do not know how many people were shown the survey. The comparison with Play measures the instrument as well as the product.',
     'El texto es opcional en Play: el embudo completo, paso a paso, está en «Reviews».':
       'Text is optional on Play: the full funnel, step by step, is under “Reviews”.',
-    'Evolución en el tiempo':
-      'Over time',
-    'Rating por idioma, mes a mes':
-      'Rating by language, month by month',
-    '{l} pasa de {a} a {b} entre {ma} y {mb}, pero su base pasa de {na} a {nb} valoraciones.':
-      '{l} moves from {a} to {b} between {ma} and {mb}, but its base moves from {na} to {nb} ratings.',
     'Mes':
       'Month',
     'Esta vista no se ha podido pintar':
@@ -1867,8 +1899,6 @@ const I18N = {
       'Sign out',
     'Aviso: esto solo evita visitas casuales. La página es un fichero estático, así que quien mire el código fuente ve los datos sin pasar por aquí.':
       'Note: this only keeps casual visitors out. The page is a static file, so anyone who reads the source sees the data without coming through here.',
-    'Día':
-      'Day',
     'Semana':
       'Week',
     'días':
@@ -1877,18 +1907,6 @@ const I18N = {
       'weeks',
     'meses':
       'months',
-    'Periodo':
-      'Period',
-    'Rating por idioma, día a día':
-      'Rating by language, day by day',
-    'Rating por idioma, semana a semana':
-      'Rating by language, week by week',
-    'Ningún idioma se mueve más de 0,25 puntos entre puntos consecutivos.':
-      'No language moves more than 0.25 points between consecutive points.',
-    '{n} puntos dibujados de {total} posibles · hueco donde el periodo no llega a {min} valoraciones · punto hueco = base menor de {thin}':
-      '{n} of {total} possible points drawn · a gap where the period falls short of {min} ratings · hollow point = base under {thin}',
-    'El eje lleva todos los {gr} del rango, también los que no tienen datos: así un hueco de varias semanas no se ve como un día. La recolección llegó en {k} lotes y se concentra en la primera quincena de cada mes, así que dos periodos contiguos NO son muestras comparables. Con el grano diario hay idiomas que casi no dibujan porque no reúnen {min} valoraciones al día: eso es la muestra, no un problema del panel.':
-      'The axis carries every one of the {gr} in the range, including those with no data: that way a gap of several weeks does not look like a single day. Collection arrived in {k} batches and clusters in the first fortnight of each month, so two adjacent periods are NOT comparable samples. At daily resolution some languages barely draw at all because they do not reach {min} ratings a day: that is the sample, not a fault of the dashboard.',
   },
 };
 </script>
@@ -2634,8 +2652,9 @@ function renderReviews(root) {
     sub: t('largo total = menciones · color = nota con la que se mencionan · una review puede llevar varios temas'),
     legend: legend(SIGNS.map(x => ({ name: signLabel(x.id), color: x.color }))),
     draw: stackedBarsH({
-      rows: tOrder.map(x => ({ label: topicLabel(x), values: tSign[x] })),
+      rows: tOrder.map(x => ({ id: x, label: topicLabel(x), values: tSign[x] })),
       keys: SIGNS.map(x => ({ id: x.id, name: signLabel(x.id), color: x.color })),
+      onPick: (topic, sign) => rToggle(topic, sign),
       fmt: v => nf(v), labelW: 186, valW: 56, rowH: 30, labelShare: true, unit: t('menciones'),
       alt: t('Temas por volumen y signo de la nota') + '. ' + topIns,
     }),
@@ -2661,6 +2680,8 @@ function renderReviews(root) {
       sub: t('% de menciones con 1-2★ · temas con 5 o más menciones · la línea es la media del corte'),
       draw: groupedCols({
         groups: acid.map(x => { const w = topicLabel(x).split(/[ ,]+/); return w[0] + '\n' + (w[1] || ''); }),
+        groupIds: acid,
+        onPick: topic => rToggle(topic, 'neg'),
         series: [{ name: t('% negativas'), color: 'var(--div-neg)', values: acid.map(negShare) }],
         height: 236, fmt: v => nf(v, 0) + ' %', refLine: globalNeg, refLabel: t('media {m}', { m: rpct(globalNeg, 0) }),
         alt: t('Qué temas son más ácidos') + '. ' + acidIns,
@@ -2698,6 +2719,7 @@ function renderReviews(root) {
      entera en blanco ocupando sitio. */
   const topTopics = topicsAll.filter(x => cols.some(l => cellN[x + '|' + l] >= MIN_CELL));
   const tlRows = topTopics.map(x => ({
+    id: x,
     label: topicLabel(x),
     values: cols.map(l => {
       const n = cellN[x + '|' + l];
@@ -2726,6 +2748,14 @@ function renderReviews(root) {
       sub: t('% de las reviews del idioma que critican ese tema con 1-2★ · celda en blanco por debajo de {n} reviews', { n: MIN_CELL }),
       draw: heatmap({
         rows: tlRows, cols: cols.map(l => langName(l) + ' (' + nf(langBase[l]) + ')'),
+        colIds: cols,
+        /* La matriz ya es solo 1-2★, así que el corte que abre es tema + idioma
+           + negativas: exactamente la celda que se ha pulsado. */
+        onPick: (topic, lg) => {
+          const same = rstate.topic === topic && rstate.lang === lg && rstate.rating === 'neg';
+          rPick(same ? { topic: 'all', lang: 'all', rating: 'all' }
+                     : { topic: topic, lang: lg, rating: 'neg' });
+        },
         labelW: 178, rowH: 26, showValues: true, fmt: v => nf(v, 1), unit: t('% del idioma'),
         alt: t('Qué duele en cada idioma') + '. ' + langTopIns,
       }),
@@ -4010,6 +4040,39 @@ function fillFilters() {
 fillFilters();
 
 function rChanged() { rstate.limit = 40; renderActive(); }
+
+/* Filtrar pulsando en una gráfica.
+   El estado y los desplegables se mueven JUNTOS: si la barra de filtros no
+   refleja el corte, quien pulsa ve la lista filtrada y no sabe ni por qué ni
+   cómo deshacerlo. Después lleva la vista al módulo de texto, que es lo que se
+   ha ido a buscar al pulsar. */
+function rPick(patch) {
+  Object.assign(rstate, patch);
+  rstate.limit = 40;
+  rLang.value = rstate.lang; rRating.value = rstate.rating;
+  rSent.value = rstate.sent; rTopic.value = rstate.topic;
+  renderActive();
+  /* `renderActive` repinta con `setTimeout(draw, 16)` cuando ya hay contenido,
+     así que el módulo que hay ahora mismo es el VIEJO: se descarta enseguida y
+     desplazarse hasta él no llevaría a ninguna parte. Se espera al repintado. */
+  setTimeout(() => {
+    const box = document.querySelector('[data-mod="verbatims"]');
+    if (!box || typeof box.scrollIntoView !== 'function') return;
+    let quiet = false;
+    try { quiet = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); } catch (e) { /* sin matchMedia */ }
+    try { box.scrollIntoView({ behavior: quiet ? 'auto' : 'smooth', block: 'start' }); }
+    catch (e) { box.scrollIntoView(); }
+  }, 32);
+}
+
+/* Pulsar dos veces lo mismo deshace el filtro: sin esa vuelta atrás, la única
+   forma de salir sería el desplegable, y quien filtró con el ratón espera
+   desfiltrar igual. */
+function rToggle(topic, rating) {
+  const want = { topic: topic, rating: rating || 'all' };
+  const same = rstate.topic === want.topic && rstate.rating === want.rating;
+  rPick(same ? { topic: 'all', rating: 'all' } : want);
+}
 rFrom.addEventListener('change', () => {
   if (!rFrom.value) { rFrom.value = isoOf(D_FROM); }
   rstate.from = Math.max(D_FROM, Math.min(numOf(rFrom.value), rstate.to));
