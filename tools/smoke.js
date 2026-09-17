@@ -176,7 +176,11 @@ function texts(n, acc) {
   (n.children || []).forEach(function (c) { texts(c, acc); });
   return acc;
 }
-var BAD = /NaN|Infinity|undefined|\\[object|null/;
+/* Con límite de palabra a propósito: el texto de las reviews es lenguaje
+   natural y "nulle" (francés) o "nulla" (italiano) contienen "null". Con 710
+   textos nunca pasó; con 29.000 aparecieron 87 falsos positivos de golpe. Un
+   "null" suelto en el DOM sigue cazándose. */
+var BAD = /\\bNaN\\b|\\bInfinity\\b|\\bundefined\\b|\\[object|\\bnull\\b/;
 function count(n) {
   var k = 1;
   (n.children || []).forEach(function (c) { k += count(c); });
