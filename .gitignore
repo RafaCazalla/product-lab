@@ -15,4 +15,12 @@ datasurvey/
 *.png
 !docs/**/*.png
 
+# Credenciales. La clave de la cuenta de servicio de Google Play vive FUERA del
+# repositorio, en ~/.config/besoccer/play-sa.json con permisos 600: lo que no
+# esta aqui no se puede publicar por accidente. Estas reglas son la segunda
+# barrera, por si alguna vez alguien la copia dentro sin pensarlo.
+*play-sa*.json
+*service-account*.json
+*credentials*.json
+
 .DS_Store

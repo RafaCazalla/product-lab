@@ -36,6 +36,8 @@ historial de git si hacen falta.
 index.html                    toda la aplicación (estilos + datos + gráficas + vistas)
 data/reviews.json             valoraciones reales ya clasificadas (copia legible del
                               bloque que va incrustado en index.html)
+tools/reviews_fetch.py        API de Google Play -> CSV acumulado. Sin dependencias: firma el
+                              JWT en Python puro. Ver «Ingesta desde la API»
 tools/reviews_build.py        CSV de Google Play -> JSON clasificado. Etiqueta tema y
                               sentimiento con un léxico multiidioma. Sin dependencias.
 tools/survey_build.py         CSV de encuesta -> JSON clasificado. Importa el
@@ -417,6 +419,57 @@ para reseñas, donde «mejor» es elogio; contestando a «qué podríamos mejora
 es una petición. Se renombra a «Sin queja identificable» en `SURVEY_LABEL`, sin tocar el
 léxico: el límite es de encuadre de la pregunta, no de vocabulario, y parchear el léxico
 lo haría invisible.
+
+## Ingesta desde la API de Google Play
+
+`tools/reviews_fetch.py` recoge las reviews por la API y las acumula en un CSV con el
+esquema que ya consume `reviews_build.py`. La cadena entera:
+
+```
+reviews_fetch.py -> data/play_reviews.csv -> reviews_build.py --inline -> index.html
+```
+
+**Los dos límites de la API mandan sobre todo lo demás**, y los dos están documentados:
+
+1. **Solo devuelve los últimos 7 días.** No hay paginación hacia atrás ni filtro de fecha.
+   Es un grifo, no un archivo: **si pasan ocho días sin ejecutarlo, esas reviews se
+   pierden para siempre.** De aquí sale la única regla de operación que importa —
+   **esto se ejecuta a diario**— y no es un adorno de automatización: es lo que convierte
+   los 9 lotes en serie continua, que es la condición que bloquea las gráficas de tiempo.
+2. **Solo devuelve reviews CON texto.** El 92,7 % de las valoraciones no sale por aquí. La
+   nota, su reparto y el rating por versión o dispositivo vienen de los **informes
+   mensuales de Play Console en Cloud Storage** (bucket `pubsite_prod_…`), que es otro
+   mecanismo. Este programa no sustituye esa exportación: la complementa.
+
+**`review_id` cambia la deduplicación.** La API da un identificador estable, así que la
+huella conservadora de `dedupe()` —texto + dispositivo + fecha + nota, que existe porque
+el CSV exportado a mano no traía id— deja de hacer falta para lo que venga por aquí.
+
+**`took_date` conserva cuándo lo vimos NOSOTROS**, no cuándo se escribió la review. En un
+*upsert* no se sobrescribe: si se hiciera, una review antigua parecería recién recogida y
+la tarjeta de cobertura de muestra mentiría.
+
+**La fecha de la review es `lastModified`, no de creación**: la API no da otra. Para una
+review vista por primera vez coinciden; si el usuario la edita, se mueve.
+
+### Permisos y credenciales
+
+- Cuenta de servicio en Google Cloud, con `androidpublisher.googleapis.com` activada (y
+  `playdeveloperreporting.googleapis.com` para cierres y ANR).
+- En Play Console → Usuarios y permisos, invitar a ese email con el permiso **de cuenta**
+  «Ver información de la app y descargar informes masivos (solo lectura)». Ese mismo
+  permiso es el que abre el bucket de informes.
+- **Tarda hasta 24 horas en propagar.** Antes de eso la API responde 401/403 y parece que
+  está mal montado. El programa lo dice en el mensaje de error, porque es el fallo que más
+  tiempo hace perder.
+- La clave vive **fuera del repositorio**, en `~/.config/besoccer/play-sa.json` con
+  permisos 600. Lo que no está dentro no se puede publicar por accidente; las reglas del
+  `.gitignore` son la segunda barrera, no la primera.
+
+**El JWT se firma en Python puro**, sin `google-auth` y sin llamar a `openssl -sign`. No
+es purismo: la primera opción mete una dependencia en un repositorio que no tiene ninguna,
+y la segunda obliga a escribir la clave privada en un fichero temporal. Así la clave solo
+existe en memoria. La firma está verificada byte a byte contra `openssl dgst -sha256`.
 
 ### Privacidad (no negociable)
 
